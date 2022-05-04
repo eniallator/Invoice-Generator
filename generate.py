@@ -1,5 +1,6 @@
 import re
 import argparse
+import pathlib
 from os import path, makedirs
 from subprocess import Popen
 from configparser import ConfigParser
@@ -141,6 +142,7 @@ if __name__ == "__main__":
         "--cfg",
         "-c",
         help="Config file to fill the invoice out with",
+        type=pathlib.Path,
         required=True,
         dest="cfg",
     )
@@ -148,6 +150,7 @@ if __name__ == "__main__":
         "--template",
         "-t",
         help="LaTeX template file to use with the config variables",
+        type=pathlib.Path,
         default="./invoice_template.tex",
         dest="template",
     )
@@ -155,6 +158,7 @@ if __name__ == "__main__":
         "--out-path",
         "-o",
         help="Output .tex path where to generate the auxiliary/tex/pdf files",
+        type=pathlib.Path,
         default="./out/invoice.tex",
         dest="out_path",
     )
