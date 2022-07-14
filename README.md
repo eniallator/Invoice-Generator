@@ -2,6 +2,23 @@
 
 Welcome to my invoice generator! It contains a custom templating language for inserting context variables/directives.
 
+## Command Usage
+
+To generate the example invoice, use the following command:
+
+```properties
+python generate.py -c ./raw_invoices/johnDoe.2000.01.01.cfg
+```
+
+The following arguments exist:
+
+- `--cfg`/`-c`
+  - The config file entry point to get all the context variables from
+- `--template`/`-t`
+  - The template file to use (can in reality be any extension/file type, but this uses LaTeX). This defaults to `./invoice_template.tex`
+- `--out-path`/`-o`
+  - The output destination for all the auxiliary files as well as the output pdf that `latexmk` creates. This defaults to `./out/invoice.tex`
+
 ## How It Works
 
 If you like the look of the [example invoice pdf](./example-invoice.pdf) or the [example invoice LaTeX](./example-invoice.tex), the way that it is generated is using the [invoice template](./invoice_template.tex) which refers to the [invoice item](./invoice_item.tex) LaTeX file for generating individual invoice items.
@@ -28,7 +45,7 @@ import=./default
 
 Invoice items are sections which have the `ITEM_` prefix, where what follows is the item ID. e.g `ITEM_1` has an ID of `1`, but `ITEM_ONE` has an ID of `ONE`.
 
-Each item must have the following options: `rate`, and `hrs`. These are then used to work out a `subtotal` option. These subtotals are also added up into a `total_due` option in the `META` section. For example:
+To take advantage of the subtotal/total calculations, each item must have the following options: `rate`, and `hrs`. These are then used to work out a `subtotal` option. These subtotals are also added up into a `total_due` option in the `META` section. For example:
 
 ```properties
 [ITEM_1]
@@ -97,7 +114,7 @@ Pay to: John Doe
 ```
 
 Note:\
-If the parser cannot find a specific context variable, it will leave that context variable unchanged and not replace it with anything.
+If the parser cannot find a specific context variable, it will replace it with an empty string.
 
 ### Items Directive
 

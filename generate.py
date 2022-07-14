@@ -72,8 +72,14 @@ class ContextVariables:
                 item["hrs"] = f"{float(item['hrs']):.2f}"
             item["rate"] = f"{float(item['rate']):.2f}"
             if "subtotal" not in item:
-                item["subtotal"] = f"{float(item['hrs']) * float(item['rate']):.2f}"
-            total += float(item["subtotal"])
+                try:
+                    subtotal = f"{float(item['hrs']) * float(item['rate']):.2f}"
+                except (ValueError, KeyError):
+                    pass
+                else:
+                    item["subtotal"] = subtotal
+            if "subtotal" in item:
+                total += float(item["subtotal"])
         if "total_due" not in self.config["META"]:
             self.config.set("META", "total_due", f"{total:.2f}")
 
@@ -100,7 +106,7 @@ class DynamicContentParser:
         variable = self.context_variables.get_variable(
             match.group("var_id"), extra=extra
         )
-        return variable if variable is not None else match.group(0)
+        return variable if variable is not None else ""
 
     def directive_items(self, args):
         item_template = args.strip()
