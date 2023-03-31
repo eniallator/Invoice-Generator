@@ -114,7 +114,7 @@ Pay to: John Doe
 ```
 
 Note:\
-If the parser cannot find a specific context variable, it will replace it with an empty string.
+If the parser cannot find a specific context variable, it will replace the variable with an empty string.
 
 ### Items Directive
 

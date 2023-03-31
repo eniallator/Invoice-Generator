@@ -114,13 +114,14 @@ class DynamicContentParser:
         if not path.exists(item_template):
             return None
         with open(item_template, "r") as file_handle:
+            template_contents = file_handle.read()
             for item in self.context_variables.invoice_items:
                 items_string += re.sub(
                     self.context_variable_re,
                     lambda match, item=item: self.insert_variable(
                         match, extra={"ITEM": item}
                     ),
-                    file_handle.read(),
+                    template_contents,
                 )
         return items_string
 
