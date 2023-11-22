@@ -65,12 +65,14 @@ class ContextVariables:
         )
         self.invoice_items = [dict(self.config[section]) for section in item_sections]
         total = 0
+        total_recurring_yearly = 0
         for item, section in zip(self.invoice_items, item_sections):
             if "id" not in item:
                 item["id"] = section[len(item_prefix) :]
-            if "." in item["hrs"]:
+            if "hrs" in item and "." in item["hrs"]:
                 item["hrs"] = f"{float(item['hrs']):.2f}"
-            item["rate"] = f"{float(item['rate']):.2f}"
+            if "rate" in item:
+                item["rate"] = f"{float(item['rate']):.2f}"
             if "subtotal" not in item:
                 try:
                     subtotal = f"{float(item['hrs']) * float(item['rate']):.2f}"
@@ -80,8 +82,16 @@ class ContextVariables:
                     item["subtotal"] = subtotal
             if "subtotal" in item:
                 total += float(item["subtotal"])
+            if "recurring_yearly" in item:
+                item["subtotal"] += f" + \\pounds{item['recurring_yearly']}/year"
+                total_recurring_yearly += float(item["recurring_yearly"])
         if "total_due" not in self.config["META"]:
             self.config.set("META", "total_due", f"{total:.2f}")
+            self.config.set(
+                "META",
+                "total_recurring_yearly_due",
+                f"{total_recurring_yearly:.2f}" if total_recurring_yearly > 0 else "",
+            )
 
     def get_variable(self, var_id, extra={}):
         var_path = tuple(var_id.split("."))
@@ -158,7 +168,6 @@ if __name__ == "__main__":
         "-t",
         help="LaTeX template file to use with the config variables",
         type=pathlib.Path,
-        default="./invoice_template.tex",
         dest="template",
     )
     arg_parser.add_argument(
@@ -166,20 +175,42 @@ if __name__ == "__main__":
         "-o",
         help="Output .tex path where to generate the auxiliary/tex/pdf files",
         type=pathlib.Path,
-        default="./out/invoice.tex",
         dest="out_path",
+    )
+    arg_parser.add_argument(
+        "--quote",
+        "-q",
+        help="In quote mode or not",
+        default=False,
+        action="store_const",
+        const=True,
     )
     prog_args = arg_parser.parse_args()
 
+    out_path = (
+        prog_args.out_path
+        if prog_args.out_path is not None
+        else "./out/quote.tex"
+        if prog_args.quote
+        else "./out/invoice.tex"
+    )
+    template = (
+        prog_args.template
+        if prog_args.template is not None
+        else "./quote_template.tex"
+        if prog_args.quote
+        else "./invoice_template.tex"
+    )
+
     context_variables = ContextVariables(prog_args.cfg)
     parser = DynamicContentParser(context_variables)
-    out_dir = path.dirname(prog_args.out_path)
+    out_dir = path.dirname(out_path)
     makedirs(out_dir, exist_ok=True)
 
-    with open(prog_args.template, "r") as file_handle:
+    with open(template, "r") as file_handle:
         generated_invoice = parser.parse_string(file_handle.read())
 
-    with open(prog_args.out_path, "w") as file_handle:
+    with open(out_path, "w") as file_handle:
         file_handle.write(generated_invoice)
 
     Popen(
@@ -191,6 +222,6 @@ if __name__ == "__main__":
             "-pdf",
             f"-aux-directory={out_dir}",
             f"-output-directory={out_dir}",
-            prog_args.out_path,
+            out_path,
         ],
     ).wait()
