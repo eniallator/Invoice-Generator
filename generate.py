@@ -4,56 +4,66 @@ import pathlib
 from os import path, makedirs
 from subprocess import Popen
 from configparser import ConfigParser
+from typing import Dict
 
 
 class ContextVariables:
     IMPORT_SEPARATOR = "\n"
 
-    def __init__(self, base_path):
+    def __init__(self, base_path: str):
         self.base_path = base_path
 
         self.config = ConfigParser()
+        self.config.add_section("META")
 
         self.fetch_imports()
         self.build_invoice_items()
 
-    def fetch_imports(self):
-        import_queue = [path.realpath(self.base_path)]
-        seen_imports = set(import_queue)
+    def combine_config(self, other_config: ConfigParser) -> None:
+        for section in other_config.sections():
+            if section not in self.config:
+                self.config.add_section(section)
+            for option in other_config.options(section):
+                self.config.set(section, option, other_config.get(section, option))
+
+    def fetch_imports(self) -> None:
+        import_stack = [path.realpath(self.base_path)]
+        seen_imports = set(import_stack)
         errored_imports = set()
-        while len(import_queue) > 0:
-            import_path = import_queue.pop(0)
+        base_config = None
+        while len(import_stack) > 0:
+            import_path = import_stack.pop()
             new_config = ConfigParser()
             success = new_config.read(import_path)
             if not success:
                 errored_imports.add(import_path)
                 continue
-            for section in new_config.sections():
-                if section not in self.config:
-                    self.config.add_section(section)
-                for option in new_config.options(section):
-                    self.config.set(section, option, new_config.get(section, option))
-            new_imports = set(
+            if base_config is None:
+                base_config = new_config
+            else:
+                self.combine_config(new_config)
+            new_imports = [
                 path.realpath(path.join(path.dirname(import_path), new_import + ".cfg"))
                 if new_import.startswith(".")
                 else path.abspath(new_import + ".cfg")
                 for new_import in self.config.get("META", "import", fallback="").split(
                     self.IMPORT_SEPARATOR
                 )
-                if new_import
-            )
+                if new_import and new_import not in seen_imports
+            ]
             self.config.set("META", "import", "")
-            for new_import in new_imports:
-                if new_import not in seen_imports:
-                    seen_imports.add(new_import)
-                    import_queue.append(new_import)
+            for new_import in new_imports[::-1]:
+                seen_imports.add(new_import)
+                import_stack.append(new_import)
+        if base_config is not None:
+            self.combine_config(base_config)
         if errored_imports:
             raise ImportError(
                 "Could not import the following config files:\n"
                 + "\n".join(errored_imports)
             )
 
-    def build_invoice_items(self):
+    def build_invoice_items(self) -> None:
         item_prefix = "ITEM_"
         item_sections = list(
             sorted(
@@ -93,7 +103,7 @@ class ContextVariables:
                 f"{total_recurring_yearly:.2f}" if total_recurring_yearly > 0 else "",
             )
 
-    def get_variable(self, var_id, extra={}):
+    def get_variable(self, var_id: str, extra: Dict[str, str] = {}) -> str:
         var_path = tuple(var_id.split("."))
         if len(var_path) > 1:
             section, key = var_path
@@ -109,16 +119,16 @@ class DynamicContentParser:
     context_variable_re = r"{{\s*(?P<var_id>[\w\.]+)\s*}}"
     directive_re = r"{\*(?P<directive>[^\*]+)\*}"
 
-    def __init__(self, context_variables):
+    def __init__(self, context_variables: ContextVariables):
         self.context_variables = context_variables
 
-    def insert_variable(self, match, extra={}):
+    def insert_variable(self, match: re.Match, extra: Dict[str, str] = {}) -> str:
         variable = self.context_variables.get_variable(
             match.group("var_id"), extra=extra
         )
         return variable if variable is not None else ""
 
-    def directive_items(self, args):
+    def directive_items(self, args: str) -> str | None:
         item_template = args.strip()
         items_string = ""
         if not path.exists(item_template):
@@ -126,16 +136,10 @@ class DynamicContentParser:
         with open(item_template, "r") as file_handle:
             template_contents = file_handle.read()
             for item in self.context_variables.invoice_items:
-                items_string += re.sub(
-                    self.context_variable_re,
-                    lambda match, item=item: self.insert_variable(
-                        match, extra={"ITEM": item}
-                    ),
-                    template_contents,
-                )
+                items_string += self.parse_string(template_contents, {"ITEM": item})
         return items_string
 
-    def insert_directive(self, match):
+    def insert_directive(self, match: re.Match) -> str:
         name = match.group("directive").split()[0]
         args = match.group("directive").strip()[len(name) :].strip()
         directive_name = f"directive_{name}"
@@ -145,10 +149,10 @@ class DynamicContentParser:
                 return output
         return match.group(0)
 
-    def parse_string(self, contents):
+    def parse_string(self, contents: str, extra: Dict[str, str] = {}) -> str:
         return re.sub(
             self.context_variable_re,
-            self.insert_variable,
+            lambda match: self.insert_variable(match, extra=extra),
             re.sub(self.directive_re, self.insert_directive, contents),
         )
 
