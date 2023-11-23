@@ -18,12 +18,16 @@ The following arguments exist:
   - The template file to use (can in reality be any extension/file type, but this uses LaTeX). This defaults to `./invoice_template.tex`
 - `--out-path`/`-o`
   - The output destination for all the auxiliary files as well as the output pdf that `latexmk` creates. This defaults to `./out/invoice.tex`
+- `--quote`/`-q`
+  - Alias for setting the default template to `./quote_template.tex` and the default out path to `./out/quote.tex`. So if they are provided, the given parameter(s) override this option.
 
 ## How It Works
 
-If you like the look of the [example invoice pdf](./example-invoice.pdf) or the [example invoice LaTeX](./example-invoice.tex), the way that it is generated is using the [invoice template](./invoice_template.tex) which refers to the [invoice item](./invoice_item.tex) LaTeX file for generating individual invoice items.
+If you like the look of the [example invoice pdf](./example_invoice.pdf) or the [example invoice LaTeX](./example_invoice.tex), the way that it is generated is using the [invoice template](./invoice_template.tex) which refers to the [invoice item](./invoice_item.tex) LaTeX file for generating individual invoice items.
 
 These templates are then filled out with context variables starting from the [example invoice config](./raw_invoices/johnDoe.2000.01.01.cfg). This then also imports the [example client](./clients/johnDoe.cfg) and the [example my_info config](./my_info.cfg).
+
+This generator also works with creating quotes! See all the quote counterpart examples for the above. Creating quotes works in the exact same way, it just uses a different template.
 
 ## Config Files
 
