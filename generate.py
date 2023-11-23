@@ -119,8 +119,9 @@ class DynamicContentParser:
     context_variable_re = r"{{\s*(?P<var_id>[\w\.]+)\s*}}"
     directive_re = r"{\*(?P<directive>[^\*]+)\*}"
 
-    def __init__(self, context_variables: ContextVariables):
+    def __init__(self, context_variables: ContextVariables, base_path: str):
         self.context_variables = context_variables
+        self.base_path = base_path
 
     def insert_variable(self, match: re.Match, extra: Dict[str, str] = {}) -> str:
         variable = self.context_variables.get_variable(
@@ -129,14 +130,17 @@ class DynamicContentParser:
         return variable if variable is not None else ""
 
     def directive_items(self, args: str) -> str | None:
-        item_template = args.strip()
+        item_template = path.join(self.base_path, args.strip())
         items_string = ""
         if not path.exists(item_template):
             return None
         with open(item_template, "r") as file_handle:
             template_contents = file_handle.read()
             for item in self.context_variables.invoice_items:
-                items_string += self.parse_string(template_contents, {"ITEM": item})
+                parser = DynamicContentParser(
+                    self.context_variables, path.dirname(item_template)
+                )
+                items_string += parser.parse_string(template_contents, {"ITEM": item})
         return items_string
 
     def insert_directive(self, match: re.Match) -> str:
@@ -207,7 +211,7 @@ if __name__ == "__main__":
     )
 
     context_variables = ContextVariables(prog_args.cfg)
-    parser = DynamicContentParser(context_variables)
+    parser = DynamicContentParser(context_variables, path.dirname(template))
     out_dir = path.dirname(out_path)
     makedirs(out_dir, exist_ok=True)
 
