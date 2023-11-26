@@ -122,9 +122,9 @@ If the parser cannot find a specific context variable, it will replace the varia
 
 ### Items Directive
 
-Directives have the following syntax: `{* name args *}`, where `name` is the name of the directive and `args` are the directive's arguments.
+Directives have the following syntax: `{* name (contents file path) args *}`, where `name` is the name of the directive, `contents file path` is the path to the contents which are given to the directive and `args` are the directive's arguments.
 
-The items directive will take in a path of an external LaTeX file, where the file will be parsed with the context variables, except with the addition of the `ITEM` section added to the context variables, which is the current invoice item. For example:
+The items directive will take in a path of an external LaTeX file which is the contents file path and no other arguments. The file will be parsed with the context variables as well as any directives (due to the parser being recursive), as well as with the addition of the `ITEM` section added to the context variables, which is the current invoice item. For example:
 
 config:
 
@@ -160,7 +160,50 @@ Will all generate:
 ```LaTeX
 Invoice Items:
 ID, hrs, rate, subtotal
-1, 5.00, 6.00, 30.00
-2, 2.00, 3.00, 6.00
+1, 5, 6.00, 30.00
+2, 2, 3.00, 6.00
+Total: 36.00
+```
+
+### Inline Items Directive
+
+Directives can also be inline, where there will also have to be a closing tag for the directive. Any contents in between the opening and closing tags will then be parsed and replaced by the directive's output.
+
+The inline directive syntax is as follows: `{* name args *}...{/* name *}` where instead of a contents file path, the contents will be whats inside the opening and closing tags. One note is that the name has to be the same as the name in the opening tag.
+
+All directives will be resolved in reverse order, where the inner most directives will be resolved first, and the outer ones will be resolved last. This means you can also have child directives within contents, which will take priority to be resolved first over anything else, so you can get quite funky with your templates.
+
+Inline directives example:
+
+Using the same config as above:
+
+```properties
+[ITEM_1]
+
+hrs=5
+rate=6
+
+[ITEM_2]
+
+hrs=2
+rate=3
+```
+
+With the following invoice template:
+
+```LaTeX
+Invoice Items:
+ID, hrs, rate, subtotal{* items *}
+{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{/* items *}
+Total: {{ total_due }}
+```
+
+Will generate the same output:
+
+```LaTeX
+Invoice Items:
+ID, hrs, rate, subtotal
+1, 5, 6.00, 30.00
+2, 2, 3.00, 6.00
 Total: 36.00
 ```

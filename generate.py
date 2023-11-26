@@ -7,6 +7,16 @@ from configparser import ConfigParser
 from typing import Dict
 
 
+def parse_item_path(item_path: str, base_path: str) -> str:
+    if item_path[0] in "\"'" and item_path.endswith(item_path[0]):
+        item_path = item_path[1:-1]
+    return (
+        path.realpath(path.join(base_path, item_path))
+        if item_path.startswith(".")
+        else path.abspath(item_path)
+    )
+
+
 class ContextVariables:
     IMPORT_SEPARATOR = "\n"
 
@@ -43,9 +53,7 @@ class ContextVariables:
             else:
                 self.combine_config(new_config)
             new_imports = [
-                path.realpath(path.join(path.dirname(import_path), new_import + ".cfg"))
-                if new_import.startswith(".")
-                else path.abspath(new_import + ".cfg")
+                parse_item_path(new_import + ".cfg", path.dirname(import_path))
                 for new_import in self.config.get("META", "import", fallback="").split(
                     self.IMPORT_SEPARATOR
                 )
@@ -109,15 +117,22 @@ class ContextVariables:
             section, key = var_path
         else:
             section, key = "META", var_path[0]
-        value = self.config.get(section, key, fallback=None)
-        if value is None:
-            return extra.get(section, {}).get(key)
-        return value
+        return extra.get(section, {}).get(
+            key, self.config.get(section, key, fallback="")
+        )
 
 
 class DynamicContentParser:
-    context_variable_re = r"{{\s*(?P<var_id>[\w\.]+)\s*}}"
-    directive_re = r"{\*(?P<directive>[^\*]+)\*}"
+    context_variable_re = re.compile(r"{{\s*(?P<var_id>[\w\.]+)\s*}}")
+    directive_re = re.compile(
+        r"{\*\s*(?P<name>\w+)\s+(?P<rest>(?P<file_path>\"[^\"]+\"|'[^']+'|[^\s\"]+)?\s*(?P<args>[^\*]+)?)\s*\*}"
+    )
+
+    def directive_close_re(self, name: str) -> re.Pattern:
+        return re.compile(r"{/\*\s*" + name + r"\s*\*}")
+
+    def sanitize_args(self, args: str | None) -> str | None:
+        return args.strip() if args is not None and args.strip() else None
 
     def __init__(self, context_variables: ContextVariables, base_path: str):
         self.context_variables = context_variables
@@ -129,35 +144,66 @@ class DynamicContentParser:
         )
         return variable if variable is not None else ""
 
-    def directive_items(self, args: str) -> str | None:
-        item_template = path.join(self.base_path, args.strip())
+    def directive_items(
+        self, contents: str | None, contents_path: str, args: str | None
+    ) -> str:
+        if args is not None:
+            raise ValueError("Items directive doesn't take arguments")
+        if contents is None:
+            raise ValueError("Items directive needs a template to insert items into")
         items_string = ""
-        if not path.exists(item_template):
-            return None
-        with open(item_template, "r") as file_handle:
-            template_contents = file_handle.read()
-            for item in self.context_variables.invoice_items:
-                parser = DynamicContentParser(
-                    self.context_variables, path.dirname(item_template)
-                )
-                items_string += parser.parse_string(template_contents, {"ITEM": item})
+        for item in self.context_variables.invoice_items:
+            items_string += DynamicContentParser(
+                self.context_variables, contents_path
+            ).parse_string(contents, {"ITEM": item})
         return items_string
 
-    def insert_directive(self, match: re.Match) -> str:
-        name = match.group("directive").split()[0]
-        args = match.group("directive").strip()[len(name) :].strip()
-        directive_name = f"directive_{name}"
-        if hasattr(self, directive_name):
-            output = getattr(self, directive_name)(args)
-            if output is not None:
-                return output
-        return match.group(0)
+    def insert_directive(self, match: re.Match, template_contents: str) -> (str, int):
+        directive_name = f"directive_{match.group('name')}"
+        if not hasattr(self, directive_name):
+            raise ValueError(f"Unknown directive: {match.group('name')}")
+        else:
+            directive = getattr(self, directive_name)
+        file_path = (
+            parse_item_path(match.group("file_path"), self.base_path)
+            if match.group("file_path") is not None
+            else None
+        )
+        if file_path is not None and path.isfile(file_path):
+            with open(file_path, "r") as file_handle:
+                child_contents = file_handle.read()
+            return (
+                directive(
+                    child_contents,
+                    path.dirname(file_path),
+                    self.sanitize_args(match.group("args")),
+                ),
+                match.end(),
+            )
+        close_match = self.directive_close_re(match.group("name")).search(
+            template_contents[match.end() :],
+        )
+        if close_match is not None:
+            child_contents = template_contents[
+                match.end() : close_match.start() + match.end()
+            ]
+            return (
+                directive(
+                    child_contents,
+                    self.base_path,
+                    self.sanitize_args(match.group("rest")),
+                ),
+                close_match.end() + match.end(),
+            )
+        raise ValueError(f"Could not find contents for directive {match.group('name')}")
 
     def parse_string(self, contents: str, extra: Dict[str, str] = {}) -> str:
-        return re.sub(
-            self.context_variable_re,
-            lambda match: self.insert_variable(match, extra=extra),
-            re.sub(self.directive_re, self.insert_directive, contents),
+        directives = [match for match in self.directive_re.finditer(contents)]
+        for directive in directives[::-1]:
+            replacement, end_pos = self.insert_directive(directive, contents)
+            contents = contents[: directive.start()] + replacement + contents[end_pos:]
+        return self.context_variable_re.sub(
+            lambda match: self.insert_variable(match, extra=extra), contents
         )
 
 
@@ -211,7 +257,9 @@ if __name__ == "__main__":
     )
 
     context_variables = ContextVariables(prog_args.cfg)
-    parser = DynamicContentParser(context_variables, path.dirname(template))
+    parser = DynamicContentParser(
+        context_variables, path.abspath(path.dirname(template))
+    )
     out_dir = path.dirname(out_path)
     makedirs(out_dir, exist_ok=True)
 
