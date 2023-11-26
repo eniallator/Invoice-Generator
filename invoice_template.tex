@@ -51,10 +51,11 @@
 \vspace{2 cm}
 
 \begin{tabularx}{\linewidth}{c X X X c}
-    \centering{\bf{ITEM}} & \centering{\bf{DESCRIPTION}} & \centering{\bf{HRS}} & \centering{\bf{RATE({{ PAYMENT.currency }}/HR)}} & \bf SUB TOTAL                                 \\[2.5ex]\hline
-                          &                              &                      &                                                  &                                               \\
-    {* items ./invoice_item.tex *}
-                          &                              &                      & \bf \large{Total}                                & \large{{{ PAYMENT.currency }}{{ total_due }}} \\[2.5ex]\hhline{~~~--}
+    \centering{\bf{ITEM}}    & \centering{\bf{DESCRIPTION}}      & \centering{\bf{HRS}}      & \centering{\bf{RATE({{ PAYMENT.currency }}/HR)}} & \bf SUB TOTAL({{ PAYMENT.currency }})         \\[2.5ex]\hline
+                             &                                   &                           &                                                  & \\{* items *}
+    \centering {{ ITEM.id }} & \centering {{ ITEM.description }} & \centering {{ ITEM.hrs }} & \centering {{ ITEM.rate }}                       & {{ ITEM.subtotal }}                           \\[2.5ex]\hline
+                             &                                   &                           &                                                  & \\{/* items *}
+                             &                                   &                           & \bf \large{Total}                                & \large{{{ PAYMENT.currency }}{{ total_due }}} \\[2.5ex]\hhline{~~~--}
 \end{tabularx}
 
 \vspace{3 cm}

@@ -54,7 +54,7 @@ class ContextVariables:
                 self.combine_config(new_config)
             new_imports = [
                 parse_item_path(new_import + ".cfg", path.dirname(import_path))
-                for new_import in self.config.get("META", "import", fallback="").split(
+                for new_import in new_config.get("META", "import", fallback="").split(
                     self.IMPORT_SEPARATOR
                 )
                 if new_import and new_import not in seen_imports
