@@ -51,10 +51,11 @@
 \vspace{1 cm}
 
 \begin{tabularx}{\linewidth}{c X c}
-  \centering{\bf{ITEM}} & \centering{\bf{DESCRIPTION}} & \bf SUB TOTAL                                 \\[2.5ex]\hline
-                        &                              &                                               \\
-  {* items ./quote_item.tex *}
-                        & \bf \large{Total}            & \large{{{ PAYMENT.currency }}{{ total_due }}} \\[2.5ex]\hhline{~--}
+  \centering{\bf{ITEM}}    & \centering{\bf{DESCRIPTION}} & \bf SUB TOTAL                                 \\[2.5ex]\hline
+                           &                              & \\{* items *}
+  \centering {{ ITEM.id }} & {{ ITEM.description }}       & {{PAYMENT.currency}}{{ ITEM.subtotal }}       \\[2.5ex]\hline
+                           &                              & \\{/* items *}
+                           & \bf \large{Total}            & \large{{{ PAYMENT.currency }}{{ total_due }}} \\[2.5ex]\hhline{~--}
 \end{tabularx}
 
 \vspace{3 cm}
@@ -69,8 +70,8 @@
 
 \Large{Responsibilities}
 
-\begin{itemize}
-  {* items ./quote_responsibility_item.tex *}
+\begin{itemize}{* items *}
+  \item \textbf{{{ITEM.description}}} - {{ITEM.responsibility}}{/* items *}
 \end{itemize}
 
 \end{document}

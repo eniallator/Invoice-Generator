@@ -198,7 +198,7 @@ ID, hrs, rate, subtotal{* items *}
 Total: {{ total_due }}
 ```
 
-Will generate the same output:
+Will generate the same output as above:
 
 ```LaTeX
 Invoice Items:
