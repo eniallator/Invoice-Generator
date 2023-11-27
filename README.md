@@ -49,6 +49,8 @@ import=./default
 
 Invoice items are sections which have the `ITEM_` prefix, where what follows is the item ID. e.g `ITEM_1` has an ID of `1`, but `ITEM_ONE` has an ID of `ONE`.
 
+One implicit calculation that takes place is with the `recurring` options. If there are any instances of `recurring` inside the ITEM(s), then there will be a `total_recurring_due` option added to the `META` section.
+
 To take advantage of the subtotal/total calculations, each item must have the following options: `rate`, and `hrs`. These are then used to work out a `subtotal` option. These subtotals are also added up into a `total_due` option in the `META` section. For example:
 
 ```properties
@@ -56,11 +58,13 @@ To take advantage of the subtotal/total calculations, each item must have the fo
 
 hrs=5
 rate=6
+recurring=7
 
 [ITEM_2]
 
 hrs=2
 rate=3
+recurring=4
 ```
 
 when parsed will become the equivalent of passing the following in:
@@ -69,6 +73,7 @@ when parsed will become the equivalent of passing the following in:
 [META]
 
 total_due=36.00
+total_recurring_due=11.00
 
 [ITEM_1]
 
@@ -76,6 +81,7 @@ id=1
 subtotal=30.00
 hrs=5.00
 rate=6.00
+recurring=7.00
 
 [ITEM_2]
 
@@ -83,6 +89,7 @@ id=2
 subtotal=6.00
 hrs=2.00
 rate=3.00
+recurring=4.00
 ```
 
 ## Template Files
@@ -171,7 +178,7 @@ Directives can also be inline, where there will also have to be a closing tag fo
 
 The inline directive syntax is as follows: `{* name args *}...{/* name *}` where instead of a contents file path, the contents will be whats inside the opening and closing tags. One note is that the name has to be the same as the name in the opening tag.
 
-All directives will be resolved in reverse order, where the inner most directives will be resolved first, and the outer ones will be resolved last. This means you can also have child directives within contents, which will take priority to be resolved first over anything else, so you can get quite funky with your templates.
+All directives will be executed in the order that they appear. This means that any context from outer directives will be taken into account (e.g. the `ITEM` context variable can then be used alongside the optional directive to achieve some pretty complex situations)
 
 Inline directives example:
 
@@ -199,6 +206,73 @@ Total: {{ total_due }}
 ```
 
 Will generate the same output as above:
+
+```LaTeX
+Invoice Items:
+ID, hrs, rate, subtotal
+1, 5, 6.00, 30.00
+2, 2, 3.00, 6.00
+Total: 36.00
+```
+
+### Optional Directive
+
+The optional directive takes in a single argument which is the path to a context variable. Then the content within the optional directive will only be shown if the context variable exists, and has a value.
+
+For example:
+
+With the following config:
+
+```properties
+[ITEM_1]
+
+hrs=5
+rate=6
+recurring=40
+
+[ITEM_2]
+
+hrs=2
+rate=3
+recurring=40
+```
+
+With the following template:
+
+```LaTeX
+Invoice Items:
+ID, hrs, rate, subtotal{* optional total_recurring_due *}, Recurring{/* optional *}{* items *}
+{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* optional total_recurring_due *}, {{ITEM.recurring}}{/* optional *}{/* items *}
+Total: {{ total_due }}{* optional total_recurring_due *}
+Total Recurring: {{total_recurring_due}}{/* optional *}
+```
+
+Will generate:
+
+```LaTeX
+Invoice Items:
+ID, hrs, rate, subtotal, Recurring
+1, 5, 6.00, 30.00, 40.00
+2, 2, 3.00, 6.00, 40.00
+Total: 36.00
+Total Recurring: 80.00
+```
+
+However, with this config:
+
+```properties
+[ITEM_1]
+
+hrs=5
+rate=6
+
+[ITEM_2]
+
+hrs=2
+rate=3
+```
+
+The following will be generated (using the same template):
 
 ```LaTeX
 Invoice Items:

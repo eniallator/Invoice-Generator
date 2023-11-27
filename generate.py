@@ -83,7 +83,7 @@ class ContextVariables:
         )
         self.invoice_items = [dict(self.config[section]) for section in item_sections]
         total = 0
-        total_recurring_yearly = 0
+        total_recurring = 0
         for item, section in zip(self.invoice_items, item_sections):
             if "id" not in item:
                 item["id"] = section[len(item_prefix) :]
@@ -100,15 +100,15 @@ class ContextVariables:
                     item["subtotal"] = subtotal
             if "subtotal" in item:
                 total += float(item["subtotal"])
-            if "recurring_yearly" in item:
-                item["subtotal"] += f" + \\pounds{item['recurring_yearly']}/year"
-                total_recurring_yearly += float(item["recurring_yearly"])
+            if "recurring" in item:
+                item["recurring"] = f"{float(item['recurring']):.2f}"
+                total_recurring += float(item["recurring"])
         if "total_due" not in self.config["META"]:
             self.config.set("META", "total_due", f"{total:.2f}")
             self.config.set(
                 "META",
-                "total_recurring_yearly_due",
-                f"{total_recurring_yearly:.2f}" if total_recurring_yearly > 0 else "",
+                "total_recurring_due",
+                f"{total_recurring:.2f}" if total_recurring > 0 else "",
             )
 
     def get_variable(self, var_id: str, extra: Dict[str, str] = {}) -> str:
@@ -128,19 +128,25 @@ class DynamicContentParser:
         r"{\*\s*(?P<name>\w+)\s+(?P<rest>(?P<file_path>\"[^\"]+\"|'[^']+'|[^\s\"]+)?\s*(?P<args>[^\*]+)?)\s*\*}"
     )
 
+    def __init__(
+        self,
+        context_variables: ContextVariables,
+        base_path: str,
+        extra: Dict[str, str] = None,
+    ):
+        self.context_variables = context_variables
+        self.base_path = base_path
+        self.extra = extra if extra is not None else {}
+
     def directive_close_re(self, name: str) -> re.Pattern:
         return re.compile(r"{/\*\s*" + name + r"\s*\*}")
 
     def sanitize_args(self, args: str | None) -> str | None:
         return args.strip() if args is not None and args.strip() else None
 
-    def __init__(self, context_variables: ContextVariables, base_path: str):
-        self.context_variables = context_variables
-        self.base_path = base_path
-
-    def insert_variable(self, match: re.Match, extra: Dict[str, str] = {}) -> str:
+    def insert_variable(self, match: re.Match) -> str:
         variable = self.context_variables.get_variable(
-            match.group("var_id"), extra=extra
+            match.group("var_id"), extra=self.extra
         )
         return variable if variable is not None else ""
 
@@ -154,11 +160,28 @@ class DynamicContentParser:
         items_string = ""
         for item in self.context_variables.invoice_items:
             items_string += DynamicContentParser(
-                self.context_variables, contents_path
-            ).parse_string(contents, {"ITEM": item})
+                self.context_variables, contents_path, {"ITEM": item}
+            ).parse_string(contents)
         return items_string
 
-    def insert_directive(self, match: re.Match, template_contents: str) -> (str, int):
+    def directive_optional(
+        self, contents: str | None, contents_path: str, args: str | None
+    ) -> str:
+        if args is None:
+            raise ValueError(
+                "Optional directive has a single argument for the context variable to check"
+            )
+        return (
+            DynamicContentParser(
+                self.context_variables, contents_path, self.extra
+            ).parse_string(contents)
+            if self.context_variables.get_variable(args)
+            else ""
+        )
+
+    def insert_directive(
+        self, match: re.Match, template_contents: str
+    ) -> tuple[str, int]:
         directive_name = f"directive_{match.group('name')}"
         if not hasattr(self, directive_name):
             raise ValueError(f"Unknown directive: {match.group('name')}")
@@ -197,14 +220,11 @@ class DynamicContentParser:
             )
         raise ValueError(f"Could not find contents for directive {match.group('name')}")
 
-    def parse_string(self, contents: str, extra: Dict[str, str] = {}) -> str:
-        directives = [match for match in self.directive_re.finditer(contents)]
-        for directive in directives[::-1]:
+    def parse_string(self, contents: str) -> str:
+        while directive := self.directive_re.search(contents):
             replacement, end_pos = self.insert_directive(directive, contents)
             contents = contents[: directive.start()] + replacement + contents[end_pos:]
-        return self.context_variable_re.sub(
-            lambda match: self.insert_variable(match, extra=extra), contents
-        )
+        return self.context_variable_re.sub(self.insert_variable, contents)
 
 
 if __name__ == "__main__":
