@@ -84,7 +84,19 @@ class ContextVariables:
         self.invoice_items = [dict(self.config[section]) for section in item_sections]
         total = 0
         total_recurring = 0
+        build_all_items = "ALL_ITEMS" not in self.config
+        if build_all_items:
+            self.config.add_section("ALL_ITEMS")
         for item, section in zip(self.invoice_items, item_sections):
+            if build_all_items:
+                for key, value in item.items():
+                    self.config.set(
+                        "ALL_ITEMS",
+                        key,
+                        self.config.get("ALL_ITEMS", key) + ", " + value
+                        if key in self.config.options("ALL_ITEMS")
+                        else value,
+                    )
             if "id" not in item:
                 item["id"] = section[len(item_prefix) :]
             if "hrs" in item and "." in item["hrs"]:
