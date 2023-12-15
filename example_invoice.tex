@@ -34,7 +34,8 @@
 \vspace{2 cm}
 
 \begin{center}
-    \Large\textbf{INVOICE}
+    \Large\textbf{INVOICE}\\
+    \normalsize\textbf{Purchase Order: ABC123}
 \end{center}
 
 \normalsize
@@ -51,14 +52,19 @@
 \vspace{2 cm}
 
 \begin{tabularx}{\linewidth}{c X X X c}
-    \centering{\bf{ITEM}} & \centering{\bf{DESCRIPTION}} & \centering{\bf{HRS}} & \centering{\bf{RATE(\pounds/HR)}} & \bf SUB TOTAL                                 \\[2.5ex]\hline
-                          &                              &                      &                                                  &                                               \\
-    % ITEM, DESCRIPTION, HRS, RATE(£/HR), SUB TOTAL
+    \centering{\bf{ITEM}}                     & \centering{\bf{DESCRIPTION}}                                     & \centering{\bf{HRS}}                                    & \centering{\bf{RATE(\pounds/HR)}} & \bf SUB TOTAL(\pounds)                   \\[2.5ex]\hline
+                                              &                                                                  &                                                         &                                                  & \\
+    \centering 1                  & \centering Random Project                                & \centering 15                               &  \centering 20.00                      & 300.00                                     \\[2.5ex]\hline
+                                              &                                                                  &                                                         &                                                  & \\
+    
+\end{tabularx}
 
-\centering 1 & \centering Random Project & \centering 15 & \centering \pounds20.00 & \pounds300.00 \\[2.5ex]\hline
-
-                          &                              &                      &                                                  &                                               \\
-                          &                              &                      & \bf \large{Total}                                & \large{\pounds300.00} \\[2.5ex]\hhline{~~~--}
+\begin{tabularx}{\linewidth}{c X X X c}
+    \centering{\bf{EXPENSE}}    & \centering{\bf{DESCRIPTION}}                                        & \centering{\bf{QTY}}                                       & \centering{\bf{UNIT PRICE(\pounds)}} & \bf SUB TOTAL(\pounds)         \\[2.5ex]\hline
+                                &                                                                     &                                                            &                                                     & \\
+    \centering 1 & \centering Travel cost                                & \centering 2                               &  \centering 10.00                      & 20.00                        \\[2.5ex]\hline
+                                &                                                                     &                                                            &                                                     & \\
+                                &                                                                     &                                                            &  \bf \large{Total}                                  & \large{\pounds320.00} \\[2.5ex]\hhline{~~~--}
 \end{tabularx}
 
 \vspace{3 cm}

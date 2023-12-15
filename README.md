@@ -219,6 +219,8 @@ Total: 36.00
 
 The optional directive takes in a single argument which is the path to a context variable. Then the content within the optional directive will only be shown if the context variable exists, and has a value.
 
+There is also a counterpart for the optional directive, `optional_not` which does the inverse where if the variable doesn't exist, then the contents will show, otherwise the contents will be omitted.
+
 For example:
 
 With the following config:

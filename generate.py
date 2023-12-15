@@ -4,7 +4,7 @@ import pathlib
 from os import path, makedirs
 from subprocess import Popen
 from configparser import ConfigParser
-from typing import Dict
+from typing import Dict, List
 
 
 def parse_item_path(item_path: str, base_path: str) -> str:
@@ -20,6 +20,8 @@ def parse_item_path(item_path: str, base_path: str) -> str:
 class ContextVariables:
     IMPORT_SEPARATOR = "\n"
 
+    built_items: Dict[str, List[Dict[str, str]]] = {}
+
     def __init__(self, base_path: str):
         self.base_path = base_path
 
@@ -27,7 +29,14 @@ class ContextVariables:
         self.config.add_section("META")
 
         self.fetch_imports()
-        self.build_invoice_items()
+
+        self.calculate_total_due = "total_due" not in self.config["META"]
+        self.calculate_total_recurring_due = (
+            "total_recurring_due" not in self.config["META"]
+        )
+
+        self.calculate_items("ITEM")
+        self.calculate_items("EXPENSE")
 
     def combine_config(self, other_config: ConfigParser) -> None:
         for section in other_config.sections():
@@ -71,57 +80,75 @@ class ContextVariables:
                 + "\n".join(errored_imports)
             )
 
-    def build_invoice_items(self) -> None:
-        item_prefix = "ITEM_"
-        item_sections = list(
+    def calculate_items(self, prefix: str) -> List[Dict[str, str]]:
+        if prefix in self.built_items:
+            return self.built_items[prefix]
+        all_section = f"ALL_{prefix}S"
+        full_prefix = f"{prefix}_"
+        sections = list(
             sorted(
                 filter(
-                    lambda section: section.startswith(item_prefix),
+                    lambda section: section.startswith(full_prefix),
                     self.config.sections(),
                 )
             )
         )
-        self.invoice_items = [dict(self.config[section]) for section in item_sections]
+        self.built_items[prefix] = [dict(self.config[section]) for section in sections]
         total = 0
         total_recurring = 0
-        build_all_items = "ALL_ITEMS" not in self.config
-        if build_all_items:
-            self.config.add_section("ALL_ITEMS")
-        for item, section in zip(self.invoice_items, item_sections):
+        build_all_items = all_section not in self.config
+        for item, section in zip(self.built_items[prefix], sections):
             if build_all_items:
+                if not self.config.has_section(all_section):
+                    self.config.add_section(all_section)
                 for key, value in item.items():
                     self.config.set(
-                        "ALL_ITEMS",
+                        all_section,
                         key,
-                        self.config.get("ALL_ITEMS", key) + ", " + value
-                        if key in self.config.options("ALL_ITEMS")
+                        self.config.get(all_section, key) + ", " + value
+                        if key in self.config.options(all_section)
                         else value,
                     )
             if "id" not in item:
-                item["id"] = section[len(item_prefix) :]
+                item["id"] = section[len(full_prefix) :]
             if "hrs" in item and "." in item["hrs"]:
                 item["hrs"] = f"{float(item['hrs']):.2f}"
+            if "qty" in item and "." in item["qty"]:
+                item["qty"] = f"{float(item['qty']):.2f}"
             if "rate" in item:
                 item["rate"] = f"{float(item['rate']):.2f}"
             if "subtotal" not in item:
                 try:
-                    subtotal = f"{float(item['hrs']) * float(item['rate']):.2f}"
+                    item[
+                        "subtotal"
+                    ] = f"{float(item['hrs'] if 'hrs' in item else item['qty']) * float(item['rate']):.2f}"
                 except (ValueError, KeyError):
                     pass
-                else:
-                    item["subtotal"] = subtotal
             if "subtotal" in item:
                 total += float(item["subtotal"])
             if "recurring" in item:
                 item["recurring"] = f"{float(item['recurring']):.2f}"
                 total_recurring += float(item["recurring"])
-        if "total_due" not in self.config["META"]:
-            self.config.set("META", "total_due", f"{total:.2f}")
+        if build_all_items:
+            self.config.set(all_section, "total_due", f"{total:.2f}")
             self.config.set(
-                "META",
+                all_section,
                 "total_recurring_due",
                 f"{total_recurring:.2f}" if total_recurring > 0 else "",
             )
+        if self.calculate_total_due:
+            total_due = self.config.getfloat("META", "total_due", fallback=0.0)
+            self.config.set("META", "total_due", f"{total_due + total:.2f}")
+        if self.calculate_total_recurring_due:
+            total_recurring_due = self.config.getfloat(
+                "META", "total_recurring_due", fallback=0.0
+            )
+            self.config.set(
+                "META",
+                "total_recurring_due",
+                f"{total_recurring_due + total_recurring:.2f}",
+            )
+        return self.built_items[prefix]
 
     def get_variable(self, var_id: str, extra: Dict[str, str] = {}) -> str:
         var_path = tuple(var_id.split("."))
@@ -150,7 +177,14 @@ class DynamicContentParser:
         self.base_path = base_path
         self.extra = extra if extra is not None else {}
 
-    def directive_close_re(self, name: str) -> re.Pattern:
+    def directives_open_re(self, name: str) -> re.Pattern:
+        return re.compile(
+            r"{\*\s*"
+            + name
+            + r'\s+(?P<rest>(?P<file_path>"[^"]+"|\'[^\']+\'|[^\s"]+)?\s*(?P<args>[^\*]+)?)\s*\*}'
+        )
+
+    def directives_close_re(self, name: str) -> re.Pattern:
         return re.compile(r"{/\*\s*" + name + r"\s*\*}")
 
     def sanitize_args(self, args: str | None) -> str | None:
@@ -170,11 +204,25 @@ class DynamicContentParser:
         if contents is None:
             raise ValueError("Items directive needs a template to insert items into")
         items_string = ""
-        for item in self.context_variables.invoice_items:
+        for item in self.context_variables.calculate_items("ITEM"):
             items_string += DynamicContentParser(
                 self.context_variables, contents_path, {"ITEM": item}
             ).parse_string(contents)
         return items_string
+
+    def directive_expenses(
+        self, contents: str | None, contents_path: str, args: str | None
+    ) -> str:
+        if args is not None:
+            raise ValueError("Expenses directive doesn't take arguments")
+        if contents is None:
+            raise ValueError("Expenses directive needs a template to insert items into")
+        expenses_string = ""
+        for item in self.context_variables.calculate_items("EXPENSE"):
+            expenses_string += DynamicContentParser(
+                self.context_variables, contents_path, {"EXPENSE": item}
+            ).parse_string(contents)
+        return expenses_string
 
     def directive_optional(
         self, contents: str | None, contents_path: str, args: str | None
@@ -187,8 +235,23 @@ class DynamicContentParser:
             DynamicContentParser(
                 self.context_variables, contents_path, self.extra
             ).parse_string(contents)
-            if self.context_variables.get_variable(args)
+            if self.context_variables.get_variable(args, extra=self.extra)
             else ""
+        )
+
+    def directive_optional_not(
+        self, contents: str | None, contents_path: str, args: str | None
+    ) -> str:
+        if args is None:
+            raise ValueError(
+                "Optional not directive has a single argument for the context variable to check"
+            )
+        return (
+            ""
+            if self.context_variables.get_variable(args, extra=self.extra)
+            else DynamicContentParser(
+                self.context_variables, contents_path, self.extra
+            ).parse_string(contents)
         )
 
     def insert_directive(
@@ -215,12 +278,30 @@ class DynamicContentParser:
                 ),
                 match.end(),
             )
-        close_match = self.directive_close_re(match.group("name")).search(
-            template_contents[match.end() :],
-        )
+        nested_count = 1
+        nested_end_index = match.end()
+        contents_end_index = match.end()
+        while nested_count > 0:
+            close_match = self.directives_close_re(match.group("name")).search(
+                template_contents[nested_end_index:],
+            )
+            nested_count = (
+                nested_count
+                + len(
+                    re.findall(
+                        self.directives_open_re(match.group("name")),
+                        template_contents[
+                            nested_end_index : close_match.start() + nested_end_index
+                        ],
+                    )
+                )
+            ) - 1
+            if nested_count > 0:
+                contents_end_index += close_match.end()
+            nested_end_index += close_match.end()
         if close_match is not None:
             child_contents = template_contents[
-                match.end() : close_match.start() + match.end()
+                match.end() : close_match.start() + contents_end_index
             ]
             return (
                 directive(
@@ -228,7 +309,7 @@ class DynamicContentParser:
                     self.base_path,
                     self.sanitize_args(match.group("rest")),
                 ),
-                close_match.end() + match.end(),
+                close_match.end() + contents_end_index,
             )
         raise ValueError(f"Could not find contents for directive {match.group('name')}")
 
