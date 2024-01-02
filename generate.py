@@ -97,18 +97,17 @@ class ContextVariables:
         total = 0
         total_recurring = 0
         build_all_items = all_section not in self.config
+        if build_all_items and not self.config.has_section(all_section):
+            self.config.add_section(all_section)
         for item, section in zip(self.built_items[prefix], sections):
-            if build_all_items:
-                if not self.config.has_section(all_section):
-                    self.config.add_section(all_section)
-                for key, value in item.items():
-                    self.config.set(
-                        all_section,
-                        key,
-                        self.config.get(all_section, key) + ", " + value
-                        if key in self.config.options(all_section)
-                        else value,
-                    )
+            for key, value in item.items():
+                self.config.set(
+                    all_section,
+                    key,
+                    self.config.get(all_section, key) + ", " + value
+                    if key in self.config.options(all_section)
+                    else value,
+                )
             if "id" not in item:
                 item["id"] = section[len(full_prefix) :]
             if "hrs" in item and "." in item["hrs"]:
@@ -157,7 +156,10 @@ class ContextVariables:
         else:
             section, key = "META", var_path[0]
         return extra.get(section, {}).get(
-            key, self.config.get(section, key, fallback="")
+            key,
+            self.config.get(section, key, fallback="")
+            if self.config.has_section(section)
+            else "",
         )
 
 
