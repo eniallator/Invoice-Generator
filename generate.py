@@ -96,17 +96,20 @@ class ContextVariables:
         self.built_items[prefix] = [dict(self.config[section]) for section in sections]
         total = 0
         total_recurring = 0
-        build_all_items = all_section not in self.config
-        if build_all_items and not self.config.has_section(all_section):
-            self.config.add_section(all_section)
+        build_all_items = False
         for item, section in zip(self.built_items[prefix], sections):
+            build_all_items = build_all_items or all_section not in self.config
+            if build_all_items and not self.config.has_section(all_section):
+                self.config.add_section(all_section)
             for key, value in item.items():
                 self.config.set(
                     all_section,
                     key,
-                    self.config.get(all_section, key) + ", " + value
-                    if key in self.config.options(all_section)
-                    else value,
+                    (
+                        self.config.get(all_section, key) + ", " + value
+                        if key in self.config.options(all_section)
+                        else value
+                    ),
                 )
             if "id" not in item:
                 item["id"] = section[len(full_prefix) :]
@@ -118,9 +121,9 @@ class ContextVariables:
                 item["rate"] = f"{float(item['rate']):.2f}"
             if "subtotal" not in item:
                 try:
-                    item[
-                        "subtotal"
-                    ] = f"{float(item['hrs'] if 'hrs' in item else item['qty']) * float(item['rate']):.2f}"
+                    item["subtotal"] = (
+                        f"{float(item['hrs'] if 'hrs' in item else item['qty']) * float(item['rate']):.2f}"
+                    )
                 except (ValueError, KeyError):
                     pass
             if "subtotal" in item:
@@ -157,9 +160,11 @@ class ContextVariables:
             section, key = "META", var_path[0]
         return extra.get(section, {}).get(
             key,
-            self.config.get(section, key, fallback="")
-            if self.config.has_section(section)
-            else "",
+            (
+                self.config.get(section, key, fallback="")
+                if self.config.has_section(section)
+                else ""
+            ),
         )
 
 
@@ -342,9 +347,10 @@ if __name__ == "__main__":
     arg_parser.add_argument(
         "--out-path",
         "-o",
-        help="Output .tex path where to generate the auxiliary/tex/pdf files",
+        help="Output .tex path where to generate the auxiliary/tex/pdf files. Use SAME to make the same as the config file name",
         type=pathlib.Path,
         dest="out_path",
+        default="SAME",
     )
     arg_parser.add_argument(
         "--quote",
@@ -357,18 +363,22 @@ if __name__ == "__main__":
     prog_args = arg_parser.parse_args()
 
     out_path = (
-        prog_args.out_path
-        if prog_args.out_path is not None
-        else "./out/quote.tex"
-        if prog_args.quote
-        else "./out/invoice.tex"
+        "./out/"
+        + path.extsep.join(path.split(prog_args.cfg)[1].split(path.extsep)[:-1])
+        + (
+            ".tex"
+            if str(prog_args.out_path) == "SAME"
+            else (
+                prog_args.out_path
+                if prog_args.out_path is not None and len(str(pathlib.Path())) > 0
+                else "./out/quote.tex" if prog_args.quote else "./out/invoice.tex"
+            )
+        )
     )
     template = (
         prog_args.template
         if prog_args.template is not None
-        else "./quote_template.tex"
-        if prog_args.quote
-        else "./invoice_template.tex"
+        else "./quote_template.tex" if prog_args.quote else "./invoice_template.tex"
     )
 
     context_variables = ContextVariables(prog_args.cfg)
@@ -391,6 +401,7 @@ if __name__ == "__main__":
             "-interaction=nonstopmode",
             "-file-line-error",
             "-pdf",
+            "-f",
             f"-aux-directory={out_dir}",
             f"-output-directory={out_dir}",
             out_path,

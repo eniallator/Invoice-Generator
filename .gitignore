@@ -6,3 +6,5 @@ me.cfg
 invoices
 rendered_invoice.tex
 .vscode
+.tmp.driveupload
+.tmp.drivedownload
