@@ -23,7 +23,7 @@ The following arguments exist:
 
 ## How It Works
 
-If you like the look of the [example invoice pdf](./example_invoice.pdf) or the [example invoice LaTeX](./example_invoice.tex), the way that it is generated is using the [invoice template](./invoice_template.tex) which refers to the [invoice item](./invoice_item.tex) LaTeX file for generating individual invoice items.
+If you like the look of the [example invoice pdf](./example_invoice.pdf) or the [example invoice LaTeX](./example_invoice.tex), the way that it is generated is using the [invoice template](./invoice_template.tex).
 
 These templates are then filled out with context variables starting from the [example invoice config](./raw_invoices/johnDoe.2000.01.01.cfg). This then also imports the [example client](./clients/johnDoe.cfg) and the [example my_info config](./my_info.cfg).
 
