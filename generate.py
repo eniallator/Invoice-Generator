@@ -53,8 +53,7 @@ class ContextVariables:
         while len(import_stack) > 0:
             import_path = import_stack.pop()
             new_config = ConfigParser()
-            success = new_config.read(import_path)
-            if not success:
+            if not new_config.read(import_path):
                 errored_imports.add(import_path)
                 continue
             if base_config is None:
@@ -231,12 +230,12 @@ class DynamicContentParser:
             ).parse_string(contents)
         return expenses_string
 
-    def directive_optional(
+    def directive_when(
         self, contents: str | None, contents_path: str, args: str | None
     ) -> str:
         if args is None:
             raise ValueError(
-                "Optional directive has a single argument for the context variable to check"
+                "When directive has a single argument for the context variable to check"
             )
         return (
             DynamicContentParser(
@@ -246,12 +245,12 @@ class DynamicContentParser:
             else ""
         )
 
-    def directive_optional_not(
+    def directive_unless(
         self, contents: str | None, contents_path: str, args: str | None
     ) -> str:
         if args is None:
             raise ValueError(
-                "Optional not directive has a single argument for the context variable to check"
+                "Unless directive has a single argument for the context variable to check"
             )
         return (
             ""

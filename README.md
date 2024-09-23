@@ -178,7 +178,7 @@ Directives can also be inline, where there will also have to be a closing tag fo
 
 The inline directive syntax is as follows: `{* name args *}...{/* name *}` where instead of a contents file path, the contents will be whats inside the opening and closing tags. One note is that the name has to be the same as the name in the opening tag.
 
-All directives will be executed in the order that they appear. This means that any context from outer directives will be taken into account (e.g. the `ITEM` context variable can then be used alongside the optional directive to achieve some pretty complex situations)
+All directives will be executed in the order that they appear. This means that any context from outer directives will be taken into account (e.g. the `ITEM` context variable can then be used alongside the `when` directive to achieve some pretty complex situations)
 
 Inline directives example:
 
@@ -215,11 +215,11 @@ ID, hrs, rate, subtotal
 Total: 36.00
 ```
 
-### Optional Directive
+### When Directive
 
-The optional directive takes in a single argument which is the path to a context variable. Then the content within the optional directive will only be shown if the context variable exists, and has a value.
+The when directive takes in a single argument which is the path to a context variable. Then the content within the when directive will only be shown if the context variable exists, and has a value.
 
-There is also a counterpart for the optional directive, `optional_not` which does the inverse where if the variable doesn't exist, then the contents will show, otherwise the contents will be omitted.
+There is also a counterpart for the when directive, `unless` which does the inverse where if the variable doesn't exist, then the contents will show, otherwise the contents will be omitted.
 
 For example:
 
@@ -243,10 +243,10 @@ With the following template:
 
 ```LaTeX
 Invoice Items:
-ID, hrs, rate, subtotal{* optional total_recurring_due *}, Recurring{/* optional *}{* items *}
-{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* optional total_recurring_due *}, {{ITEM.recurring}}{/* optional *}{/* items *}
-Total: {{ total_due }}{* optional total_recurring_due *}
-Total Recurring: {{total_recurring_due}}{/* optional *}
+ID, hrs, rate, subtotal{* when total_recurring_due *}, Recurring{/* when *}{* items *}
+{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* when total_recurring_due *}, {{ITEM.recurring}}{/* when *}{/* items *}
+Total: {{ total_due }}{* when total_recurring_due *}
+Total Recurring: {{total_recurring_due}}{/* when *}
 ```
 
 Will generate:
