@@ -32,6 +32,8 @@
   },
   "scripts": {
     "generate": "node src/generate.ts",
+    "fetch-db": "node src/fetch-db.ts",
+    "draft-invoices": "node src/draft-invoices.ts",
     "regenerate-examples": "node scripts/regenerate-examples.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint ./src",

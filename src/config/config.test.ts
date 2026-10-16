@@ -2,8 +2,8 @@ import { join } from "node:path";
 import { raise } from "niall-utils";
 import { describe, expect, it } from "vitest";
 
+import { createFiles, lines } from "../test-helpers.ts";
 import { Config, DEFAULT_SECTION } from "./config.ts";
-import { createFiles, lines } from "./test-helpers.ts";
 
 const readConfig = (text: string): Config =>
   Config.read(join(createFiles({ "c.cfg": text }), "c.cfg")) ??

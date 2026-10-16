@@ -1,7 +1,7 @@
 import { attempt, raise } from "niall-utils";
 
-import { readText } from "./io.ts";
-import { parseFloatStrict } from "./numbers.ts";
+import { readText } from "../io.ts";
+import { parseFloatStrict } from "../numbers.ts";
 
 export const DEFAULT_SECTION = "DEFAULT";
 
@@ -17,10 +17,8 @@ const parseIni = (
 ): { defaults: Section; sections: Map<string, Section> } => {
   const rawDefaults = new Map<string, string[]>();
   const rawSections = new Map<string, Map<string, string[]>>();
-  const seenOptions = new Set<string>();
 
-  let current: Map<string, string[]> | undefined;
-  let sectionName = "";
+  let current: { name: string; options: Map<string, string[]> } | undefined;
   let optionLines: string[] | undefined;
   let indentLevel = 0;
 
@@ -48,14 +46,14 @@ const parseIni = (
     if (sectionMatch !== null) {
       const [, name = ""] = sectionMatch;
       if (name === DEFAULT_SECTION) {
-        current = rawDefaults;
+        current = { name, options: rawDefaults };
       } else if (rawSections.has(name)) {
         throw new Error(`${where}: duplicate section '${name}'`);
       } else {
-        current = new Map();
-        rawSections.set(name, current);
+        const options = new Map<string, string[]>();
+        rawSections.set(name, options);
+        current = { name, options };
       }
-      sectionName = name;
       optionLines = undefined;
       continue;
     }
@@ -68,15 +66,13 @@ const parseIni = (
     if (name === "") {
       throw new Error(`${where}: could not parse '${value}'`);
     }
-    const optionKey = `${sectionName}\0${name}`;
-    if (seenOptions.has(optionKey)) {
+    if (current.options.has(name)) {
       throw new Error(
-        `${where}: duplicate option '${name}' in '${sectionName}'`
+        `${where}: duplicate option '${name}' in '${current.name}'`
       );
     }
-    seenOptions.add(optionKey);
     optionLines = [rawValue.trim()];
-    current.set(name, optionLines);
+    current.options.set(name, optionLines);
   }
 
   const finalise = (raw: Map<string, string[]>): Section =>

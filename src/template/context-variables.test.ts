@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { contextFrom, lines } from "./test-helpers.ts";
+import { contextFrom, lines } from "../test-helpers.ts";
 
 const itemsOf = (cfg: string, prefix = "ITEM") =>
   contextFrom(cfg)

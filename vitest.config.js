@@ -9,8 +9,15 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
-      // The process entry (exits the process and shells out to latexmk) and test support code
-      exclude: ["src/generate.ts", "src/test-helpers.ts", "src/**/*.test.ts"],
+      // The process entries (they exit the process, shell out to latexmk or touch
+      // Google Drive) and test support code
+      exclude: [
+        "src/generate.ts",
+        "src/fetch-db.ts",
+        "src/draft-invoices.ts",
+        "src/test-helpers.ts",
+        "src/**/*.test.ts",
+      ],
       thresholds: {
         statements: 100,
         branches: 100,

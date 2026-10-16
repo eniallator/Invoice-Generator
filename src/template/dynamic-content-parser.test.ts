@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { lines, render } from "./test-helpers.ts";
+import { lines, render } from "../test-helpers.ts";
 
 const ITEMS_CFG = lines(
   "[META]",

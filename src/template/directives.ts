@@ -1,9 +1,9 @@
 import { dirname } from "node:path";
 import { raise } from "niall-utils";
 
+import { isFile, parseItemPath, readText } from "../io.ts";
+import { formatFixed2, parseFloatStrict } from "../numbers.ts";
 import type { ContextVariables, Extra, Item } from "./context-variables.ts";
-import { isFile, parseItemPath, readText } from "./io.ts";
-import { formatFixed2, parseFloatStrict } from "./numbers.ts";
 
 export interface DirectiveInput {
   /** Everything after the directive's name, trimmed, or undefined if there is nothing */

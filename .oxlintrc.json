@@ -55,7 +55,7 @@
     "typescript/no-deprecated": "error",
     "typescript/no-duplicate-enum-values": "error",
     "typescript/no-duplicate-type-constituents": "error",
-    "typescript/no-dynamic-delete": "error",
+    "typescript/no-dynamic-delete": "off",
     "typescript/no-empty-interface": "off",
     "typescript/no-empty-object-type": "error",
     "typescript/no-explicit-any": "error",

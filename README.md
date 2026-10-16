@@ -332,3 +332,86 @@ Total: 50.00
 Total: 50.00
 Total: 50.00
 ```
+
+## Time Tracker (optional)
+
+Everything above works on its own: you can always write a raw invoice or quote by hand and run `pnpm generate` on it. If you track your time with the [Time Tracker app](https://play.google.com/store/apps/details?id=com.aadhk.time) and have it automatically back up its database to Google Drive, these scripts can draft each month's raw invoices from it. None of this is needed to use the generator or to run the tests.
+
+To set it up, copy `.env.example` to `.env` (which is gitignored) and fill it in:
+
+- `TIMETRACKER_DRIVE_FOLDER`
+  - The folder that Google Drive syncs the app's backups into.
+- `ROUNDING_THRESHOLD_MINUTES`
+  - The default rounding threshold, see [rounding](#rounding).
+
+### Fetching the database
+
+```properties
+pnpm fetch-db
+```
+
+This copies the newest backup (`timetracker_YYYY_MM_DD_auto_database.db`) from the Drive folder into `timetracker_databases/`, which is gitignored as it holds client data.
+
+### Drafting raw invoices
+
+```properties
+pnpm draft-invoices 2000 3
+```
+
+This writes a draft raw invoice for every client with billable time in that month (March 2000 here), using the newest database in `timetracker_databases/`. Each is named after the client's config file and today's date, and gets the next invoice id. For example, with the following client config:
+
+```properties
+[META]
+
+default_description=Consulting
+```
+
+and two days of work, it writes `raw_invoices/janeRoe.2000.04.03.cfg` (when run on 3rd April 2000) containing:
+
+```properties
+[META]
+
+import=./default
+    ../clients/janeRoe
+invoice_id=AB0042
+invoice_date=2000/04/03
+
+[ITEM_ 1st Mar]
+
+description=Consulting
+hrs=8
+rate=50
+
+[ITEM_ 2nd Mar]
+
+description=Consulting
+hrs=7
+rate=50
+```
+
+Edit the draft however you like (add items, expenses or notes), and then generate it as usual. The following apply:
+
+- There is an item for each day, and each project and rate worked on a day is its own item. Several in one day are numbered in the order they started, e.g. `1st Mar (pt 1)` and `1st Mar (pt 2)`. Single digit days are written with a leading space (as in the `[ITEM_ 1st Mar]` above), so that the items sort in day order. Items that round down to no hours are left out.
+- The item's description is the notes from the app if there are any, and otherwise the client's `default_description`.
+- Expenses in the app for the month become `EXPENSE_` sections.
+- A client's config is matched to its name in the app by its file name (ignoring case and spacing, so `Jane Roe` is `janeRoe.cfg`), or by `timetracker_client=<name in the app>` in its `META` section. Clients without a config are skipped, with a warning.
+- Existing drafts are never overwritten.
+- `--client <name>` only drafts that client, and `--db <path>` uses a different database.
+
+#### Rounding
+
+Hours are rounded so that the month's total is a whole number of hours, and so is every item. The month's total rounds up if the minutes past the last whole hour are more than the threshold, and down otherwise. Every item then starts rounded up, and the items with the fewest minutes past the hour (the earliest first when they are equal) are rounded down until they add up to the month's total. For example, with a threshold of 30 minutes, days of 7h55, 7h40 and 7h10 total 22h45, which rounds up to 23 hours, so the 7h10 day (the fewest minutes past the hour) is rounded down:
+
+| Worked | Rounded |
+| ------ | ------- |
+| 7h55   | 8       |
+| 7h40   | 8       |
+| 7h10   | 7       |
+
+The threshold is `ROUNDING_THRESHOLD_MINUTES` unless a client's `META` section has its own `rounding_threshold_minutes`.
+
+#### Invoice ids
+
+The ids that have been used are kept in `.invoice-numbers.json` (gitignored). A new draft continues from the last id that was allocated, or from the highest `invoice_id` in `raw_invoices/` if there is no such file yet. The id is recorded against the draft's file name, so writing the same draft again (say after deleting it to start again) reuses its id instead of using up another number.
+
+`--invoice-id <id>` uses a specific id for a draft instead, without changing the last id that new drafts continue from. This is for one invoice, so if several clients have time that month, say which with `--client`.

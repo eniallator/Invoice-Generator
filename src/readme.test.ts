@@ -1,11 +1,15 @@
 // Integration tests: every example in README.md, run end to end through the
 // config loader, context variables and template parser.
+import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { parseCli } from "./cli.ts";
-import { loadConfig } from "./imports.ts";
+import { loadConfig } from "./config/imports.ts";
+import { readText } from "./io.ts";
 import { contextFrom, createFiles, lines, render } from "./test-helpers.ts";
+import { createDrafts } from "./timetracker/drafts.ts";
+import { roundHours } from "./timetracker/rounding.ts";
 
 const ITEMS_CFG = lines(
   "[ITEM_1]",
@@ -391,5 +395,95 @@ describe("README: Add Directive", () => {
     expect(() => render("{* add ITEM_total_due */}", cfg)).toThrow(
       "add directive needs at least two context variables to add up"
     );
+  });
+});
+
+describe("README: Time Tracker (optional)", () => {
+  const entry = (start: string, minutes: number) => ({
+    client: "Jane Roe",
+    project: "Website",
+    rate: 50,
+    start,
+    minutes,
+    notes: "",
+  });
+
+  const setup = () => {
+    const dir = createFiles({
+      "clients/janeRoe.cfg": lines(
+        "[META]",
+        "",
+        "default_description=Consulting"
+      ),
+      "raw_invoices/default.cfg": "[META]\n",
+      "raw_invoices/earlier.cfg": "[META]\ninvoice_id=AB0041\n",
+    });
+    const draft = () =>
+      createDrafts({
+        entries: [
+          entry("2000-03-01 09:00", 480),
+          entry("2000-03-02 09:00", 420),
+        ],
+        expenses: [],
+        clientsDir: join(dir, "clients"),
+        rawInvoicesDir: join(dir, "raw_invoices"),
+        numbersPath: join(dir, ".invoice-numbers.json"),
+        today: "2000-04-03",
+        thresholdMinutes: 30,
+      });
+    return {
+      dir,
+      draft,
+      path: join(dir, "raw_invoices", "janeRoe.2000.04.03.cfg"),
+    };
+  };
+
+  it("drafts a raw invoice for a client with time in the month", () => {
+    const { draft, path } = setup();
+    draft();
+    expect(readText(path)).toBe(
+      lines(
+        "[META]",
+        "",
+        "import=./default",
+        "    ../clients/janeRoe",
+        "invoice_id=AB0042",
+        "invoice_date=2000/04/03",
+        "",
+        "[ITEM_ 1st Mar]",
+        "",
+        "description=Consulting",
+        "hrs=8",
+        "rate=50",
+        "",
+        "[ITEM_ 2nd Mar]",
+        "",
+        "description=Consulting",
+        "hrs=7",
+        "rate=50",
+        ""
+      )
+    );
+  });
+
+  it("rounds the days so they add up to the month's total", () => {
+    // 22h45 in total rounds up to 23h with a threshold of 30 minutes
+    expect(roundHours([475, 460, 430], 30)).toEqual([8, 8, 7]);
+  });
+
+  it("never overwrites an existing draft", () => {
+    const { draft, path } = setup();
+    draft();
+    expect(draft()).toMatchObject([{ kind: "skipped" }]);
+    expect(readText(path)).toContain("invoice_id=AB0042");
+  });
+
+  it("reuses a draft's invoice id when it is written again", () => {
+    const { draft, path } = setup();
+    draft();
+    rmSync(path);
+    expect(draft()).toMatchObject([
+      { kind: "created", invoiceId: "AB0042", idSource: "recorded" },
+    ]);
   });
 });

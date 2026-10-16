@@ -1,4 +1,8 @@
-import { formatFixed2, parseFloatOrNull, parseFloatStrict } from "./numbers.ts";
+import {
+  formatFixed2,
+  parseFloatOrNull,
+  parseFloatStrict,
+} from "../numbers.ts";
 
 export type Item = Map<string, string>;
 

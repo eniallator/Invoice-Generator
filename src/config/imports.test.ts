@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { createFiles, lines } from "../test-helpers.ts";
 import { loadConfig, META } from "./imports.ts";
-import { createFiles, lines } from "./test-helpers.ts";
 
 const load = (files: Record<string, string>, entry = "main.cfg") =>
   loadConfig(join(createFiles(files), entry));

@@ -1,9 +1,9 @@
 import { raise } from "niall-utils";
 
-import type { Config } from "./config.ts";
-import { loadConfig, META } from "./imports.ts";
+import type { Config } from "../config/config.ts";
+import { loadConfig, META } from "../config/imports.ts";
+import { formatFixed2 } from "../numbers.ts";
 import { mergeItems, normaliseItem, sumOption, type Item } from "./items.ts";
-import { formatFixed2 } from "./numbers.ts";
 
 export type { Item } from "./items.ts";
 export type Extra = ReadonlyMap<string, Item>;

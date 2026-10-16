@@ -1,8 +1,8 @@
 import { dirname } from "node:path";
 import { raise } from "niall-utils";
 
+import { parseItemPath, realpath } from "../io.ts";
 import { Config } from "./config.ts";
-import { parseItemPath, realpath } from "./io.ts";
 
 export const META = "META";
 

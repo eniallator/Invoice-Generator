@@ -2,12 +2,12 @@ import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
+import { contextFrom, createFiles, lines } from "../test-helpers.ts";
 import {
   DIRECTIVES,
   isDirectiveName,
   type DirectiveInput,
 } from "./directives.ts";
-import { contextFrom, createFiles, lines } from "./test-helpers.ts";
 
 const ITEMS_CFG = lines(
   "[META]",

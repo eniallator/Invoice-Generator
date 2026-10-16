@@ -1,9 +1,9 @@
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-import { ContextVariables } from "./context-variables.ts";
-import { DynamicContentParser } from "./dynamic-content-parser.ts";
 import { readText, writeText } from "./io.ts";
+import { ContextVariables } from "./template/context-variables.ts";
+import { DynamicContentParser } from "./template/dynamic-content-parser.ts";
 
 export const renderTemplate = (cfg: string, template: string): string =>
   new DynamicContentParser(
