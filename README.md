@@ -127,11 +127,11 @@ Pay to: John Doe
 Note:\
 If the parser cannot find a specific context variable, it will replace the variable with an empty string.
 
-### Items Directive
+### Map Directive
 
 Directives have the following syntax: `{* name (contents file path) args *}`, where `name` is the name of the directive, `contents file path` is the path to the contents which are given to the directive and `args` are the directive's arguments.
 
-The items directive will take in a path of an external LaTeX file which is the contents file path and no other arguments. The file will be parsed with the context variables as well as any directives (due to the parser being recursive), as well as with the addition of the `ITEM` section added to the context variables, which is the current invoice item. For example:
+The map directive will take in a path of an external LaTeX file which is the contents file path and the section prefix (e.g. `ITEM`) to map over. The file will be parsed with the context variables as well as any directives (due to the parser being recursive), as well as with the addition of the section prefix added to the context variables, which is the current invoice item. For example:
 
 config:
 
@@ -152,7 +152,7 @@ invoice template:
 ```LaTeX
 Invoice Items:
 ID, hrs, rate, subtotal
-{* items ./invoice_item.tex *}
+{* map ./invoice_item.tex ITEM *}
 Total: {{ total_due }}
 ```
 
@@ -200,8 +200,8 @@ With the following invoice template:
 
 ```LaTeX
 Invoice Items:
-ID, hrs, rate, subtotal{* items *}
-{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{/* items *}
+ID, hrs, rate, subtotal{* map ITEM *}
+{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{/* map *}
 Total: {{ total_due }}
 ```
 
@@ -243,8 +243,8 @@ With the following template:
 
 ```LaTeX
 Invoice Items:
-ID, hrs, rate, subtotal{* when total_recurring_due *}, Recurring{/* when *}{* items *}
-{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* when total_recurring_due *}, {{ITEM.recurring}}{/* when *}{/* items *}
+ID, hrs, rate, subtotal{* when total_recurring_due *}, Recurring{/* when *}{* map ITEM *}
+{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* when total_recurring_due *}, {{ITEM.recurring}}{/* when *}{/* map *}
 Total: {{ total_due }}{* when total_recurring_due *}
 Total Recurring: {{total_recurring_due}}{/* when *}
 ```

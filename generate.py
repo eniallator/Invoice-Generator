@@ -1,10 +1,10 @@
-import re
 import argparse
 import pathlib
-from os import path, makedirs
-from subprocess import Popen
+import re
 from configparser import ConfigParser
-from typing import Dict, List
+from os import makedirs, path
+from subprocess import Popen
+from typing import Dict, List, Optional, cast
 
 
 def parse_item_path(item_path: str, base_path: str) -> str:
@@ -39,16 +39,16 @@ class ContextVariables:
         self.calculate_items("EXPENSE")
 
     def combine_config(self, other_config: ConfigParser) -> None:
-        for section in other_config.sections():
+        for section in other_config:
             if section not in self.config:
                 self.config.add_section(section)
-            for option in other_config.options(section):
-                self.config.set(section, option, other_config.get(section, option))
+            for option, value in other_config.items(section):
+                self.config.set(section, option, value)
 
     def fetch_imports(self) -> None:
         import_stack = [path.realpath(self.base_path)]
         seen_imports = set(import_stack)
-        errored_imports = set()
+        errored_imports = set[str]()
         base_config = None
         while len(import_stack) > 0:
             import_path = import_stack.pop()
@@ -85,12 +85,7 @@ class ContextVariables:
         all_section = f"ALL_{prefix}S"
         full_prefix = f"{prefix}_"
         sections = list(
-            sorted(
-                filter(
-                    lambda section: section.startswith(full_prefix),
-                    self.config.sections(),
-                )
-            )
+            sorted(filter(lambda section: section.startswith(full_prefix), self.config))
         )
         self.built_items[prefix] = [dict(self.config[section]) for section in sections]
         total = 0
@@ -112,17 +107,14 @@ class ContextVariables:
                 )
             if "id" not in item:
                 item["id"] = section[len(full_prefix) :]
-            if "hrs" in item and "." in item["hrs"]:
-                item["hrs"] = f"{float(item['hrs']):.2f}"
-            if "qty" in item and "." in item["qty"]:
-                item["qty"] = f"{float(item['qty']):.2f}"
-            if "rate" in item:
-                item["rate"] = f"{float(item['rate']):.2f}"
+            for key in ("hrs", "days", "qty", "rate", "price"):
+                if key in item and "." in item[key]:
+                    item[key] = f"{float(item[key]):.2f}"
             if "subtotal" not in item:
                 try:
-                    item["subtotal"] = (
-                        f"{float(item['hrs'] if 'hrs' in item else item['qty']) * float(item['rate']):.2f}"
-                    )
+                    numerator = item['hrs'] if 'hrs' in item else item["days"] if "days" in item else item['qty']
+                    denominator = item['rate'] if 'rate' in item else item['price']
+                    item["subtotal"] = f"{float(numerator) * float(denominator):.2f}"
                 except (ValueError, KeyError):
                     pass
             if "subtotal" in item:
@@ -151,19 +143,14 @@ class ContextVariables:
             )
         return self.built_items[prefix]
 
-    def get_variable(self, var_id: str, extra: Dict[str, str] = {}) -> str:
+    def get_variable(self, var_id: str, extra: Dict[str, Dict[str, str]] = {}) -> str:
         var_path = tuple(var_id.split("."))
         if len(var_path) > 1:
             section, key = var_path
         else:
-            section, key = "META", var_path[0]
+            section, key = "META", cast(tuple[str], var_path)[0]
         return extra.get(section, {}).get(
-            key,
-            (
-                self.config.get(section, key, fallback="")
-                if self.config.has_section(section)
-                else ""
-            ),
+            key, self.config.get(section, key, fallback="")
         )
 
 
@@ -177,65 +164,52 @@ class DynamicContentParser:
         self,
         context_variables: ContextVariables,
         base_path: str,
-        extra: Dict[str, str] = None,
+        extra: Optional[Dict[str, Dict[str, str]]] = None,
     ):
         self.context_variables = context_variables
         self.base_path = base_path
         self.extra = extra if extra is not None else {}
 
-    def directives_open_re(self, name: str) -> re.Pattern:
+    def directives_open_re(self, name: str) -> re.Pattern[str]:
         return re.compile(
             r"{\*\s*"
             + name
             + r'\s+(?P<rest>(?P<file_path>"[^"]+"|\'[^\']+\'|[^\s"]+)?\s*(?P<args>[^\*]+)?)\s*\*}'
         )
 
-    def directives_close_re(self, name: str) -> re.Pattern:
+    def directives_close_re(self, name: str) -> re.Pattern[str]:
         return re.compile(r"{/\*\s*" + name + r"\s*\*}")
 
-    def sanitize_args(self, args: str | None) -> str | None:
+    def sanitize_args(self, args: Optional[str]) -> str | None:
         return args.strip() if args is not None and args.strip() else None
 
-    def insert_variable(self, match: re.Match) -> str:
-        variable = self.context_variables.get_variable(
+    def insert_variable(self, match: re.Match[str]) -> str:
+        return self.context_variables.get_variable(
             match.group("var_id"), extra=self.extra
         )
-        return variable if variable is not None else ""
 
-    def directive_items(
-        self, contents: str | None, contents_path: str, args: str | None
-    ) -> str:
-        if args is not None:
-            raise ValueError("Items directive doesn't take arguments")
-        if contents is None:
-            raise ValueError("Items directive needs a template to insert items into")
-        items_string = ""
-        for item in self.context_variables.calculate_items("ITEM"):
-            items_string += DynamicContentParser(
-                self.context_variables, contents_path, {"ITEM": item}
-            ).parse_string(contents)
-        return items_string
-
-    def directive_expenses(
-        self, contents: str | None, contents_path: str, args: str | None
-    ) -> str:
-        if args is not None:
-            raise ValueError("Expenses directive doesn't take arguments")
-        if contents is None:
-            raise ValueError("Expenses directive needs a template to insert items into")
-        expenses_string = ""
-        for item in self.context_variables.calculate_items("EXPENSE"):
-            expenses_string += DynamicContentParser(
-                self.context_variables, contents_path, {"EXPENSE": item}
-            ).parse_string(contents)
-        return expenses_string
-
-    def directive_when(
-        self, contents: str | None, contents_path: str, args: str | None
+    def directive_map(
+        self, contents: str, contents_path: str, args: Optional[str]
     ) -> str:
         if args is None:
             raise ValueError(
-                "When directive has a single argument for the context variable to check"
+                "map directive has a single argument for the context variable to check"
+            )
+        built = ""
+        # TODO: Get variable first, then calculate var if it doesn't exist and can be calculated
+        # ALSO iterate over the item_Ns
+        for item in self.context_variables.calculate_items(args):
+            built += DynamicContentParser(
+                self.context_variables, contents_path, {args: item}
+            ).parse_string(contents)
+        return built
+
+    def directive_when(
+        self, contents: str, contents_path: str, args: Optional[str]
+    ) -> str:
+        if args is None:
+            raise ValueError(
+                "when directive has a single argument for the context variable to check"
             )
         return (
             DynamicContentParser(
@@ -246,11 +220,11 @@ class DynamicContentParser:
         )
 
     def directive_unless(
-        self, contents: str | None, contents_path: str, args: str | None
+        self, contents: str, contents_path: str, args: Optional[str]
     ) -> str:
         if args is None:
             raise ValueError(
-                "Unless directive has a single argument for the context variable to check"
+                "unless directive has a single argument for the context variable to check"
             )
         return (
             ""
@@ -261,7 +235,7 @@ class DynamicContentParser:
         )
 
     def insert_directive(
-        self, match: re.Match, template_contents: str
+        self, match: re.Match[str], template_contents: str
     ) -> tuple[str, int]:
         directive_name = f"directive_{match.group('name')}"
         if not hasattr(self, directive_name):
@@ -287,10 +261,15 @@ class DynamicContentParser:
         nested_count = 1
         nested_end_index = match.end()
         contents_end_index = match.end()
+        close_match = None
         while nested_count > 0:
             close_match = self.directives_close_re(match.group("name")).search(
                 template_contents[nested_end_index:],
             )
+            if close_match is None:
+                raise ValueError(
+                    f"Could not find the closing directive for {match.group('name')}"
+                )
             nested_count = (
                 nested_count
                 + len(
@@ -329,11 +308,8 @@ class DynamicContentParser:
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(description="Generate an invoice")
     arg_parser.add_argument(
-        "--cfg",
-        "-c",
         help="Config file to fill the invoice out with",
         type=pathlib.Path,
-        required=True,
         dest="cfg",
     )
     arg_parser.add_argument(
@@ -369,7 +345,7 @@ if __name__ == "__main__":
             if str(prog_args.out_path) == "SAME"
             else (
                 prog_args.out_path
-                if prog_args.out_path is not None and len(str(pathlib.Path())) > 0
+                if prog_args.out_path is not None and str(prog_args.out_path) != ""
                 else "./out/quote.tex" if prog_args.quote else "./out/invoice.tex"
             )
         )
