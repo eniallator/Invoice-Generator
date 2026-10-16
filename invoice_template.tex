@@ -49,24 +49,24 @@
 
 \underline{Invoice To:}\\{{ INVOICE_TO.address }}\\Attention: {{ INVOICE_TO.fullname }}\\{{ INVOICE_TO.contact }}
 
-\vspace{2 cm}{* when ALL_ITEMS.total_due *}
+\vspace{2 cm}{* when ITEM_total_due *}
 
-\begin{tabularx}{\linewidth}{c X {* when ALL_ITEMS.hrs *}X {/* when *}{* when ALL_ITEMS.days *}X {/* when *}{* when ALL_ITEMS.rate *}X {/* when *}c}
-    \centering{\bf{ITEM}}               & \centering{\bf{DESCRIPTION}}      {* when ALL_ITEMS.hrs *} & \centering{\bf{HRS}}{/* when *}{* when ALL_ITEMS.days *}      & \centering{\bf{DAYS}}{/* when *}{* when ALL_ITEMS.rate *}      & \centering{\bf{RATE({{ PAYMENT.currency }}/HR)}} {/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})                   \\[2.5ex]\hline
-                                        & {* when ALL_ITEMS.hrs *}                                   & {/* when *}{* when ALL_ITEMS.days *}                          & {/* when *}{* when ALL_ITEMS.rate *}                           & {/* when *}                                                  & \\{* map ITEM *}
-    \centering {{ ITEM.id }}            & \centering {{ ITEM.description }} {* when ALL_ITEMS.hrs *} & \centering {{ ITEM.hrs }}{/* when *}{* when ALL_ITEMS.days *} & \centering {{ ITEM.days }}{/* when *}{* when ALL_ITEMS.rate *} & {/* when *} \centering {{ ITEM.rate }}                       & {{ ITEM.subtotal }}                                     \\[2.5ex]\hline
-                                        & {* when ALL_ITEMS.hrs *}                                   & {/* when *}{* when ALL_ITEMS.days *}                          & {/* when *}{* when ALL_ITEMS.rate *}                           & {/* when *}                                                  & \\{/* map *}
-    {* unless ALL_EXPENSES.total_due *} & {* when ALL_ITEMS.hrs *}                                   & {/* when *}{* when ALL_ITEMS.days *}                          & {/* when *}{* when ALL_ITEMS.rate *}                           & {/* when *} \bf \large{Total}                                & \large{{{ PAYMENT.currency }}{{ ALL_ITEMS.total_due }}} \\[2.5ex]\hhline{~~~--}{/* unless *}
-\end{tabularx}{/* when *}{* when ALL_EXPENSES.total_due *}
+\begin{tabularx}{\linewidth}{c X {* when ITEM_hrs *}X {/* when *}{* when ITEM_days *}X {/* when *}{* when ITEM_rate *}X {/* when *}c}
+    \centering{\bf{ITEM}}               & \centering{\bf{DESCRIPTION}}      {* when ITEM_hrs *} & \centering{\bf{HRS}}{/* when *}{* when ITEM_days *}      & \centering{\bf{DAYS}}{/* when *}{* when ITEM_rate *}      & \centering{\bf{RATE({{ PAYMENT.currency }}/HR)}} {/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})                   \\[2.5ex]\hline
+                                        & {* when ITEM_hrs *}                                   & {/* when *}{* when ITEM_days *}                          & {/* when *}{* when ITEM_rate *}                           & {/* when *}                                                  & \\{* map ITEM *}
+    \centering {{ ITEM.id }}            & \centering {{ ITEM.description }} {* when ITEM_hrs *} & \centering {{ ITEM.hrs }}{/* when *}{* when ITEM_days *} & \centering {{ ITEM.days }}{/* when *}{* when ITEM_rate *} & {/* when *} \centering {{ ITEM.rate }}                       & {{ ITEM.subtotal }}                                     \\[2.5ex]\hline
+                                        & {* when ITEM_hrs *}                                   & {/* when *}{* when ITEM_days *}                          & {/* when *}{* when ITEM_rate *}                           & {/* when *}                                                  & \\{/* map *}
+    {* unless EXPENSE_total_due *} & {* when ITEM_hrs *}                                   & {/* when *}{* when ITEM_days *}                          & {/* when *}{* when ITEM_rate *}                           & {/* when *} \bf \large{Total}                                & \large{{{ PAYMENT.currency }}{{ ITEM_total_due }}} \\[2.5ex]\hhline{~~~--}{/* unless *}
+\end{tabularx}{/* when *}{* when EXPENSE_total_due *}
 
 \vspace{0.5 cm}
 
-\begin{tabularx}{\linewidth}{c X {* when ALL_EXPENSES.qty *}c {/* when *}{* when ALL_EXPENSES.rate *}c {/* when *}c}
-    \centering{\bf{EXPENSE}}    & \centering{\bf{DESCRIPTION}} {* when ALL_EXPENSES.qty *} & \centering{\bf{QTY}}{/* when *}{* when ALL_EXPENSES.rate *}         & \centering{\bf{RATE({{ PAYMENT.currency }})}}{/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})         \\[2.5ex]\hline
-                                & {* when ALL_EXPENSES.qty *}                              & {/* when *}{* when ALL_EXPENSES.rate *}                             & {/* when *}                                              & \\{* map EXPENSE *}
-    \centering {{ EXPENSE.id }} & {{ EXPENSE.description }}    {* when ALL_EXPENSES.qty *} & \centering {{ EXPENSE.qty }}{/* when *}{* when ALL_EXPENSES.rate *} & {/* when *} \centering {{ EXPENSE.rate }}                & {{ EXPENSE.subtotal }}                        \\[2.5ex]\hline
-                                & {* when ALL_EXPENSES.qty *}                              & {/* when *}{* when ALL_EXPENSES.rate *}                             & {/* when *}                                              & \\{/* map *}
-                                & {* when ALL_EXPENSES.qty *}                              & {/* when *}{* when ALL_EXPENSES.rate *}                             & {/* when *} \bf \large{Total}                            & \large{{{ PAYMENT.currency }}{{ total_due }}} \\[2.5ex]\hhline{~~~--}
+\begin{tabularx}{\linewidth}{c X {* when EXPENSE_qty *}c {/* when *}{* when EXPENSE_rate *}c {/* when *}c}
+    \centering{\bf{EXPENSE}}    & \centering{\bf{DESCRIPTION}} {* when EXPENSE_qty *} & \centering{\bf{QTY}}{/* when *}{* when EXPENSE_rate *}         & \centering{\bf{RATE({{ PAYMENT.currency }})}}{/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})         \\[2.5ex]\hline
+                                & {* when EXPENSE_qty *}                              & {/* when *}{* when EXPENSE_rate *}                             & {/* when *}                                              & \\{* map EXPENSE *}
+    \centering {{ EXPENSE.id }} & {{ EXPENSE.description }}    {* when EXPENSE_qty *} & \centering {{ EXPENSE.qty }}{/* when *}{* when EXPENSE_rate *} & {/* when *} \centering {{ EXPENSE.rate }}                & {{ EXPENSE.subtotal }}                        \\[2.5ex]\hline
+                                & {* when EXPENSE_qty *}                              & {/* when *}{* when EXPENSE_rate *}                             & {/* when *}                                              & \\{/* map *}
+                                & {* when EXPENSE_qty *}                              & {/* when *}{* when EXPENSE_rate *}                             & {/* when *} \bf \large{Total}                            & \large{{{ PAYMENT.currency }}{* add ITEM_total_due EXPENSE_total_due */}} \\[2.5ex]\hhline{~~~--}
 \end{tabularx}{/* when *}
 
 \vspace{3 cm}

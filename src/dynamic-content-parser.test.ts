@@ -14,7 +14,10 @@ const ITEMS_CFG = lines(
   "[ITEM_2]",
   "description=Second",
   "hrs=2",
-  "rate=3"
+  "rate=3",
+  "[EXPENSE_a]",
+  "qty=2",
+  "price=10"
 );
 
 describe("DynamicContentParser", () => {
@@ -65,6 +68,15 @@ describe("DynamicContentParser", () => {
       );
     });
 
+    it("inserts group variables", () => {
+      expect(
+        render(
+          "{{ ITEM_total_due }}|{{ ITEM_hrs }}|{{ EXPENSE_total_due }}",
+          ITEMS_CFG
+        )
+      ).toBe("36.00|5, 2|20.00");
+    });
+
     // Regression: LaTeX braces directly next to the variable braces
     it("handles variables surrounded by LaTeX braces", () => {
       expect(render("\\large{{{ PAYMENT.currency }}{{ a }}}", cfg)).toBe(
@@ -88,13 +100,13 @@ describe("DynamicContentParser", () => {
     });
 
     it("leaves closing tags and incomplete directives alone", () => {
-      expect(render("{/* when *} {* } { * when a * }")).toBe(
-        "{/* when *} {* } { * when a * }"
+      expect(render("{/* when *} {* } { * when a * } */} {*}")).toBe(
+        "{/* when *} {* } { * when a * } */} {*}"
       );
     });
   });
 
-  describe("when / unless", () => {
+  describe("block directives", () => {
     it("shows the contents when the variable has a value", () => {
       expect(render("{* when yes *}shown{/* when *}", ITEMS_CFG)).toBe("shown");
     });
@@ -120,6 +132,16 @@ describe("DynamicContentParser", () => {
 
     it("tolerates extra whitespace in the tags", () => {
       expect(render("{*   when    yes   *}x{/*   when   *}", ITEMS_CFG)).toBe(
+        "x"
+      );
+    });
+
+    it("tolerates no whitespace around the tags", () => {
+      expect(render("{*when yes*}x{/*when*}", ITEMS_CFG)).toBe("x");
+    });
+
+    it("tolerates newlines within the tags", () => {
+      expect(render("{*\n  when\n  yes\n*}x{/*\n  when\n*}", ITEMS_CFG)).toBe(
         "x"
       );
     });
@@ -188,7 +210,7 @@ describe("DynamicContentParser", () => {
     });
 
     it("requires an argument", () => {
-      expect(() => render("{* when *} x{/* when *}")).toThrow(
+      expect(() => render("{* when *}x{/* when *}")).toThrow(
         "when directive has a single argument for the context variable to check"
       );
     });
@@ -209,6 +231,116 @@ describe("DynamicContentParser", () => {
       expect(() => render("{* nope x *}y{/* nope *}")).toThrow(
         "Unknown directive: nope"
       );
+    });
+  });
+
+  describe("self closing directives", () => {
+    const files = {
+      "item.tex": "<{{ EXPENSE.id }}>",
+      "my item.tex": "({{ ITEM.id }})",
+      "sub/outer.tex": "{* map ./inner.tex ITEM */}|{{ yes }}",
+      "sub/inner.tex": "[{{ ITEM.id }}]",
+      "flag.tex": "flag",
+    };
+
+    it("has no contents of its own, so needs no closing tag", () => {
+      expect(render("a{* add yes yes */}b", ITEMS_CFG)).toBe("a2.00b");
+    });
+
+    it("tolerates any whitespace in the tag", () => {
+      expect(render("{*add yes yes*/}", ITEMS_CFG)).toBe("2.00");
+      expect(render("{*\n  add\n  yes\n  yes\n*/}", ITEMS_CFG)).toBe("2.00");
+    });
+
+    it("rejects unknown directives", () => {
+      expect(() => render("{* nope */}")).toThrow("Unknown directive: nope");
+    });
+
+    it("cannot be a directive that needs contents", () => {
+      expect(() => render("{* when */}")).toThrow(
+        "when directive needs contents between its tags or the path of a contents file"
+      );
+    });
+
+    describe("with a contents file", () => {
+      it("uses the file as the contents", () => {
+        expect(render("{* map ./item.tex EXPENSE */}", ITEMS_CFG, files)).toBe(
+          "<a>"
+        );
+      });
+
+      it("works with other directives", () => {
+        expect(render("{* when ./flag.tex yes */}", ITEMS_CFG, files)).toBe(
+          "flag"
+        );
+        expect(render("{* when ./flag.tex no */}", ITEMS_CFG, files)).toBe("");
+        expect(render("{* unless ./flag.tex no */}", ITEMS_CFG, files)).toBe(
+          "flag"
+        );
+      });
+
+      it.each(['"./my item.tex"', "'./my item.tex'"])(
+        "supports quoted paths (%s)",
+        quoted => {
+          expect(render(`{* map ${quoted} ITEM */}`, ITEMS_CFG, files)).toBe(
+            "(1)(2)"
+          );
+        }
+      );
+
+      it("resolves nested paths relative to the containing file", () => {
+        expect(
+          render("{* when ./sub/outer.tex yes */}", ITEMS_CFG, files)
+        ).toBe("[1][2]|1");
+      });
+
+      it("needs no closing tag", () => {
+        expect(
+          render("a{* map ./item.tex EXPENSE */}b", ITEMS_CFG, files)
+        ).toBe("a<a>b");
+      });
+
+      it("throws if the file does not exist", () => {
+        expect(() =>
+          render("{* when ./nope.tex yes */}", ITEMS_CFG, files)
+        ).toThrow(/Could not find the contents file for when/);
+      });
+
+      it("throws for missing arguments", () => {
+        expect(() => render("{* map ./item.tex */}", ITEMS_CFG, files)).toThrow(
+          "map directive has a single argument"
+        );
+      });
+
+      it("does not treat an opening tag as one that reads a file", () => {
+        // with a closing tag the contents are what is between the tags, so
+        // `./item.tex` would just be part of the (invalid) variable name
+        expect(() =>
+          render("{* when ./item.tex yes *}x{/* when *}", ITEMS_CFG, files)
+        ).toThrow("Invalid variable");
+      });
+    });
+
+    describe("inside a block of the same name", () => {
+      it("is not mistaken for an opening tag", () => {
+        expect(
+          render(
+            "{* map ITEM *}{{ ITEM.id }}{* map ./item.tex EXPENSE */}|{/* map *}",
+            ITEMS_CFG,
+            files
+          )
+        ).toBe("1<a>|2<a>|");
+      });
+
+      it("can follow a block of the same name", () => {
+        expect(
+          render(
+            "{* map ITEM *}{{ ITEM.id }}{/* map *}{* map ./item.tex EXPENSE */}",
+            ITEMS_CFG,
+            files
+          )
+        ).toBe("12<a>");
+      });
     });
   });
 
@@ -254,7 +386,7 @@ describe("DynamicContentParser", () => {
       );
     });
 
-    it("maps over the expenses too", () => {
+    it("maps over any prefix", () => {
       expect(
         render(
           "{* map EXPENSE *}{{ EXPENSE.id }}={{ EXPENSE.subtotal }};{/* map *}",
@@ -269,68 +401,121 @@ describe("DynamicContentParser", () => {
       );
     });
 
-    // TODO: not implemented yet. Map should iterate every section starting with
-    // the given argument and expose all of the precomputed values (e.g. ALL_ITEMS
-    // totals) to the contents, and nested maps should keep the outer item.
-    it.todo("exposes the precomputed values inside the contents");
-    it.todo("keeps the outer item available inside a nested map");
+    describe("precomputed values", () => {
+      it("exposes the group's values inside the contents", () => {
+        expect(
+          render(
+            "{* map ITEM *}{{ ITEM.id }}/{{ ITEM_total_due }}/{{ ITEM_hrs }};{/* map *}",
+            ITEMS_CFG
+          )
+        ).toBe("1/36.00/5, 2;2/36.00/5, 2;");
+      });
+
+      it("works for any prefix", () => {
+        expect(
+          render(
+            "{* map FOO *}{{ FOO_total_due }}{/* map *}",
+            lines("[FOO_x]", "qty=2", "price=3")
+          )
+        ).toBe("6.00");
+      });
+
+      it("does not depend on the order things appear in", () => {
+        const before = render(
+          "[{{ ITEM_total_due }}]{* map FOO *}{{ FOO_total_due }}{/* map *}",
+          lines(ITEMS_CFG, "[FOO_x]", "qty=2", "price=3")
+        );
+        const after = render(
+          "{* map FOO *}{{ FOO_total_due }}{/* map *}[{{ ITEM_total_due }}]",
+          lines(ITEMS_CFG, "[FOO_x]", "qty=2", "price=3")
+        );
+        expect(before).toBe("[36.00]6.00");
+        expect(after).toBe("6.00[36.00]");
+      });
+    });
+
+    describe("nested maps", () => {
+      it("keeps the outer item available inside", () => {
+        expect(
+          render(
+            "{* map ITEM *}{* map EXPENSE *}{{ ITEM.id }}-{{ EXPENSE.id }};{/* map *}{/* map *}",
+            ITEMS_CFG
+          )
+        ).toBe("1-a;2-a;");
+      });
+
+      it("lets the inner item shadow an outer one of the same prefix", () => {
+        expect(
+          render(
+            "{* map ITEM *}{* map ITEM *}{{ ITEM.id }}{/* map *}|{/* map *}",
+            ITEMS_CFG
+          )
+        ).toBe("12|12|");
+      });
+
+      it("keeps the outer item in other directives inside", () => {
+        expect(
+          render(
+            "{* map ITEM *}{* map EXPENSE *}{* when ITEM.recurring *}R{/* when *}{/* map *}.{/* map *}",
+            ITEMS_CFG
+          )
+        ).toBe("R..");
+      });
+    });
   });
 
-  describe("directives with a contents file", () => {
-    const files = {
-      "item.tex": "<{{ ITEM.id }}>",
-      "my item.tex": "({{ ITEM.id }})",
-      "sub/outer.tex": "{* map ./inner.tex ITEM *}|{{ yes }}",
-      "sub/inner.tex": "[{{ ITEM.id }}]",
-      "flag.tex": "flag",
-    };
-
-    it("uses the file as the contents", () => {
-      expect(render("{* map ./item.tex ITEM *}", ITEMS_CFG, files)).toBe(
-        "<1><2>"
-      );
+  describe("add", () => {
+    it("adds up the arguments of a self closing tag", () => {
+      expect(
+        render("{* add ITEM_total_due EXPENSE_total_due */}", ITEMS_CFG)
+      ).toBe("56.00");
     });
 
-    it("works with other directives", () => {
-      expect(render("{* when ./flag.tex yes *}", ITEMS_CFG, files)).toBe(
-        "flag"
-      );
-      expect(render("{* when ./flag.tex no *}", ITEMS_CFG, files)).toBe("");
-      expect(render("{* unless ./flag.tex no *}", ITEMS_CFG, files)).toBe(
-        "flag"
-      );
+    it("adds up the arguments and contents of a block", () => {
+      expect(
+        render("{* add ITEM_total_due *}EXPENSE_total_due{/* add *}", ITEMS_CFG)
+      ).toBe("56.00");
+      expect(
+        render(
+          "{* add ITEM_total_due *}\n  EXPENSE_total_due\n  yes\n{/* add *}",
+          ITEMS_CFG
+        )
+      ).toBe("57.00");
     });
 
-    it.each(['"./my item.tex"', "'./my item.tex'"])(
-      "supports quoted paths (%s)",
-      quoted => {
-        expect(render(`{* map ${quoted} ITEM *}`, ITEMS_CFG, files)).toBe(
-          "(1)(2)"
-        );
-      }
-    );
+    it("takes the variables from the contents alone, with no arguments", () => {
+      expect(
+        render("{* add *}ITEM_total_due EXPENSE_total_due{/* add *}", ITEMS_CFG)
+      ).toBe("56.00");
+    });
 
-    it("resolves nested paths relative to the containing file", () => {
-      expect(render("{* when ./sub/outer.tex yes *}", ITEMS_CFG, files)).toBe(
-        "[1][2]|1"
+    it("reads group variables through the explicit META section", () => {
+      expect(
+        render("{* add META.ITEM_total_due EXPENSE_total_due */}", ITEMS_CFG)
+      ).toBe("56.00");
+    });
+
+    it("counts groups that do not exist as zero", () => {
+      expect(
+        render("{* add ITEM_total_due NOPE_total_due */}", ITEMS_CFG)
+      ).toBe("36.00");
+    });
+
+    it("is usable inside other directives", () => {
+      expect(
+        render(
+          "{* map ITEM *}{* add ITEM.subtotal ITEM_total_due */}|{/* map *}",
+          ITEMS_CFG
+        )
+      ).toBe("66.00|42.00|");
+    });
+
+    it("needs at least two variables", () => {
+      expect(() => render("{* add ITEM_total_due */}", ITEMS_CFG)).toThrow(
+        "add directive needs at least two context variables to add up"
       );
-    });
-
-    it("does not need a closing tag", () => {
-      expect(render("a{* map ./item.tex ITEM *}b", ITEMS_CFG, files)).toBe(
-        "a<1><2>b"
-      );
-    });
-
-    it("treats a path that is not a file as the argument and needs a closing tag", () => {
-      expect(() =>
-        render("{* when ./nope.tex yes *}", ITEMS_CFG, files)
-      ).toThrow("Could not find the closing directive for when");
-    });
-
-    it("throws for missing arguments", () => {
-      expect(() => render("{* map ./item.tex *}", ITEMS_CFG, files)).toThrow(
-        "map directive has a single argument"
+      expect(() => render("{* add */}", ITEMS_CFG)).toThrow(
+        "add directive needs at least two context variables to add up"
       );
     });
   });

@@ -55,7 +55,7 @@
                            &                              & \\{* map ITEM *}
   \centering {{ ITEM.id }} & {{ ITEM.description }}       & {{PAYMENT.currency}}{{ ITEM.subtotal }}       \\[2.5ex]\hline
                            &                              & \\{/* map *}
-                           & \bf \large{Total}            & \large{{{ PAYMENT.currency }}{{ total_due }}} \\[2.5ex]\hhline{~--}
+                           & \bf \large{Total}            & \large{{{ PAYMENT.currency }}{{ ITEM_total_due }}{* unless ITEM_total_due *}0.00{/* unless *}} \\[2.5ex]\hhline{~--}
 \end{tabularx}
 
 \vspace{3 cm}

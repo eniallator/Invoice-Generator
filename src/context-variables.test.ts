@@ -47,14 +47,14 @@ describe("ContextVariables", () => {
       expect(ctx.getVariable(".")).toBe("");
     });
 
-    it("rejects empty parts between separators too", () => {
-      expect(() => ctx.getVariable("A..B")).toThrow("Invalid variable 'A..B'");
-    });
-
     it("rejects more than one section separator", () => {
       expect(() => ctx.getVariable("A.B.C")).toThrow(
         "Invalid variable 'A.B.C': expected [section.]option"
       );
+    });
+
+    it("rejects empty parts between separators too", () => {
+      expect(() => ctx.getVariable("A..B")).toThrow("Invalid variable 'A..B'");
     });
 
     describe("extra context", () => {
@@ -156,6 +156,12 @@ describe("ContextVariables", () => {
       ).toMatchObject({ rate: "10.00", subtotal: "20.00" });
     });
 
+    it("works for any prefix, including ones with underscores", () => {
+      expect(itemsOf("[FOO_BAR_x]\nqty=2", "FOO_BAR")).toEqual([
+        { id: "x", qty: "2" },
+      ]);
+    });
+
     it("is empty when no sections match", () => {
       expect(itemsOf("[META]\nx=1")).toEqual([]);
     });
@@ -165,192 +171,234 @@ describe("ContextVariables", () => {
       expect(ctx.calculateItems("ITEM")).toBe(ctx.calculateItems("ITEM"));
     });
 
-    it("works for arbitrary prefixes", () => {
-      const ctx = contextFrom("[FOO_x]\nqty=2\nprice=3");
-      expect(ctx.calculateItems("FOO")).toHaveLength(1);
-      expect(ctx.getVariable("ALL_FOOS.total_due")).toBe("6.00");
+    it("shares its result with the group variables", () => {
+      const ctx = contextFrom("[ITEM_1]\nhrs=1\nrate=1");
+      const items = ctx.calculateItems("ITEM");
+      ctx.getVariable("ITEM_total_due");
+      expect(ctx.calculateItems("ITEM")).toBe(items);
     });
 
     it("rejects invalid numbers", () => {
-      expect(() => contextFrom("[ITEM_1]\nhrs=1.x\nrate=1")).toThrow(
+      expect(() => itemsOf("[ITEM_1]\nhrs=1.x\nrate=1")).toThrow(
         "could not convert string to float: '1.x'"
       );
-      expect(() => contextFrom("[ITEM_1]\nsubtotal=lots")).toThrow(
+      expect(() => itemsOf("[ITEM_1]\nsubtotal=lots")).toThrow(
         "could not convert string to float: 'lots'"
       );
-      expect(() => contextFrom("[ITEM_1]\nrecurring=monthly")).toThrow(
+      expect(() => itemsOf("[ITEM_1]\nrecurring=monthly")).toThrow(
         "could not convert string to float: 'monthly'"
       );
     });
   });
 
-  describe("totals", () => {
-    it("adds the item subtotals into META.total_due", () => {
-      const ctx = contextFrom(
-        lines("[ITEM_1]", "hrs=5", "rate=6", "[ITEM_2]", "hrs=2", "rate=3")
-      );
-      expect(ctx.getVariable("total_due")).toBe("36.00");
+  describe("group variables", () => {
+    describe("totals", () => {
+      it("adds the item subtotals into <prefix>_total_due", () => {
+        const ctx = contextFrom(
+          lines("[ITEM_1]", "hrs=5", "rate=6", "[ITEM_2]", "hrs=2", "rate=3")
+        );
+        expect(ctx.getVariable("ITEM_total_due")).toBe("36.00");
+      });
+
+      it("works out each group separately", () => {
+        const ctx = contextFrom(
+          lines(
+            "[ITEM_1]",
+            "hrs=5",
+            "rate=6",
+            "[EXPENSE_1]",
+            "qty=2",
+            "price=10"
+          )
+        );
+        expect(ctx.getVariable("ITEM_total_due")).toBe("30.00");
+        expect(ctx.getVariable("EXPENSE_total_due")).toBe("20.00");
+      });
+
+      // Regression: there is no longer a combined total of everything
+      it("has no combined total and no generated ALL_ sections", () => {
+        const ctx = contextFrom("[ITEM_1]\nhrs=5\nrate=6");
+        ctx.getVariable("ITEM_total_due");
+        expect(ctx.getVariable("total_due")).toBe("");
+        expect(ctx.getVariable("total_recurring_due")).toBe("");
+        expect(ctx.getVariable("ALL_ITEMS.total_due")).toBe("");
+      });
+
+      it("skips items that have no subtotal", () => {
+        const ctx = contextFrom(
+          lines("[ITEM_1]", "description=Free", "[ITEM_2]", "hrs=1", "rate=4")
+        );
+        expect(ctx.getVariable("ITEM_total_due")).toBe("4.00");
+      });
+
+      it("uses provided subtotals", () => {
+        const ctx = contextFrom("[ITEM_1]\nsubtotal=12.34");
+        expect(ctx.getVariable("ITEM_total_due")).toBe("12.34");
+      });
+
+      it("adds up recurring amounts into <prefix>_total_recurring_due", () => {
+        const ctx = contextFrom(
+          lines(
+            "[ITEM_1]",
+            "recurring=7",
+            "[ITEM_2]",
+            "recurring=4.5",
+            "[EXPENSE_1]",
+            "recurring=1"
+          )
+        );
+        expect(ctx.getVariable("ITEM_total_recurring_due")).toBe("11.50");
+        expect(ctx.getVariable("EXPENSE_total_recurring_due")).toBe("1.00");
+      });
+
+      // Regression: a recurring total of zero used to make
+      // `when total_recurring_due` always true
+      it("has no recurring total when nothing recurs", () => {
+        expect(
+          contextFrom("[ITEM_1]\nhrs=1\nrate=1").getVariable(
+            "ITEM_total_recurring_due"
+          )
+        ).toBe("");
+        expect(
+          contextFrom("[ITEM_1]\nrecurring=0").getVariable(
+            "ITEM_total_recurring_due"
+          )
+        ).toBe("");
+      });
     });
 
-    it("includes expenses in META.total_due", () => {
-      const ctx = contextFrom(
-        lines("[ITEM_1]", "hrs=5", "rate=6", "[EXPENSE_1]", "qty=2", "price=10")
-      );
-      expect(ctx.getVariable("total_due")).toBe("50.00");
-      expect(ctx.getVariable("ALL_ITEMS.total_due")).toBe("30.00");
-      expect(ctx.getVariable("ALL_EXPENSES.total_due")).toBe("20.00");
+    describe("joined options", () => {
+      it("joins every item's option with commas", () => {
+        const ctx = contextFrom(
+          lines("[ITEM_1]", "hrs=5", "rate=6", "[ITEM_2]", "hrs=2", "rate=3")
+        );
+        expect(ctx.getVariable("ITEM_hrs")).toBe("5, 2");
+        expect(ctx.getVariable("ITEM_rate")).toBe("6, 3");
+      });
+
+      it("is built from the options as written, before normalisation", () => {
+        const ctx = contextFrom("[ITEM_1]\nhrs=5.5\nrate=2");
+        expect(ctx.getVariable("ITEM_hrs")).toBe("5.5");
+        expect(ctx.getVariable("ITEM_rate")).toBe("2");
+        expect(ctx.getVariable("ITEM_id")).toBe("");
+        expect(ctx.getVariable("ITEM_subtotal")).toBe("");
+      });
+
+      it("only joins the items that have the option", () => {
+        const ctx = contextFrom(
+          lines("[ITEM_1]", "hrs=5", "[ITEM_2]", "days=2")
+        );
+        expect(ctx.getVariable("ITEM_hrs")).toBe("5");
+        expect(ctx.getVariable("ITEM_days")).toBe("2");
+        expect(ctx.getVariable("ITEM_rate")).toBe("");
+      });
+
+      it("includes options inherited from the DEFAULT section", () => {
+        const ctx = contextFrom(
+          lines("[DEFAULT]", "currency=GBP", "[ITEM_1]", "hrs=1")
+        );
+        expect(ctx.getVariable("ITEM_currency")).toBe("GBP");
+      });
+
+      it("looks options up with the same case as the config", () => {
+        // option names are lower cased when they are read
+        const ctx = contextFrom("[ITEM_1]\nHrs=5");
+        expect(ctx.getVariable("ITEM_hrs")).toBe("5");
+      });
     });
 
-    it("has a total due of 0.00 when there is nothing to add up", () => {
-      expect(contextFrom("").getVariable("total_due")).toBe("0.00");
+    describe("resolving the name", () => {
+      it("prefers the config when it has the variable", () => {
+        const ctx = contextFrom(
+          lines("[META]", "ITEM_total_due=999", "[ITEM_1]", "hrs=1", "rate=1")
+        );
+        expect(ctx.getVariable("ITEM_total_due")).toBe("999");
+        expect(ctx.getVariable("ITEM_hrs")).toBe("1");
+      });
+
+      it("lives in META, so works with the explicit section too", () => {
+        const ctx = contextFrom("[ITEM_1]\nhrs=1\nrate=1");
+        expect(ctx.getVariable("META.ITEM_total_due")).toBe("1.00");
+        expect(ctx.getVariable("META.ITEM_hrs")).toBe("1");
+        expect(ctx.getVariable("META.ITEM_total_due")).toBe(
+          ctx.getVariable("ITEM_total_due")
+        );
+      });
+
+      it("does not apply to other sections", () => {
+        const ctx = contextFrom("[ITEM_1]\nhrs=1\nrate=1");
+        expect(ctx.getVariable("OTHER.ITEM_total_due")).toBe("");
+      });
+
+      it("is empty for groups that do not exist", () => {
+        const ctx = contextFrom("[ITEM_1]\nhrs=1");
+        expect(ctx.getVariable("NOPE_total_due")).toBe("");
+        expect(ctx.getVariable("EXPENSE_total_due")).toBe("");
+        expect(ctx.getVariable("nounderscore")).toBe("");
+        expect(ctx.getVariable("ITEM_")).toBe("");
+        expect(ctx.getVariable("_ITEM")).toBe("");
+        expect(ctx.getVariable("_a_b")).toBe("");
+      });
+
+      it("uses the longest prefix that is a group", () => {
+        const ctx = contextFrom(
+          lines(
+            "[FOO_1]",
+            "qty=1",
+            "price=10",
+            "[FOO_BAR_1]",
+            "qty=3",
+            "price=2"
+          )
+        );
+        // FOO_BAR_1 is in both the FOO and FOO_BAR groups
+        expect(ctx.getVariable("FOO_total_due")).toBe("16.00");
+        expect(ctx.getVariable("FOO_BAR_total_due")).toBe("6.00");
+        expect(ctx.getVariable("FOO_BAR_qty")).toBe("3");
+        expect(ctx.getVariable("FOO_qty")).toBe("1, 3");
+      });
+
+      it("falls back to a shorter prefix when the longer one is not a group", () => {
+        const ctx = contextFrom("[FOO_1]\nqty=1\nprice=10");
+        expect(ctx.getVariable("FOO_total_due")).toBe("10.00");
+        expect(ctx.getVariable("FOO_x_total_due")).toBe("");
+      });
     });
 
-    // Regression: a recurring total of zero used to be written as "0.00",
-    // which made `when total_recurring_due` always true
-    it("has no recurring total when nothing recurs", () => {
-      expect(contextFrom("").getVariable("total_recurring_due")).toBe("");
-      expect(
-        contextFrom("[ITEM_1]\nhrs=1\nrate=1").getVariable(
-          "total_recurring_due"
-        )
-      ).toBe("");
-      expect(
-        contextFrom("[ITEM_1]\nrecurring=0").getVariable("total_recurring_due")
-      ).toBe("");
-    });
+    describe("laziness", () => {
+      it("computes nothing until it is used", () => {
+        expect(() => contextFrom("[ITEM_1]\nhrs=1.x\nrate=abc")).not.toThrow();
+      });
 
-    it("has a recurring total when only expenses recur", () => {
-      expect(
-        contextFrom("[ITEM_1]\nhrs=1\n[EXPENSE_1]\nrecurring=2").getVariable(
-          "total_recurring_due"
-        )
-      ).toBe("2.00");
-    });
+      it("only computes the groups that are used", () => {
+        const ctx = contextFrom(
+          lines("[ITEM_1]", "hrs=1", "rate=1", "[BAD_1]", "rate=abc")
+        );
+        expect(ctx.getVariable("ITEM_total_due")).toBe("1.00");
+        expect(() => ctx.getVariable("BAD_total_due")).toThrow(
+          "could not convert string to float: 'abc'"
+        );
+      });
 
-    it("skips items that have no subtotal", () => {
-      const ctx = contextFrom(
-        lines("[ITEM_1]", "description=Free", "[ITEM_2]", "hrs=1", "rate=4")
-      );
-      expect(ctx.getVariable("total_due")).toBe("4.00");
-    });
-
-    it("uses provided subtotals", () => {
-      const ctx = contextFrom("[ITEM_1]\nsubtotal=12.34");
-      expect(ctx.getVariable("total_due")).toBe("12.34");
-    });
-
-    it("adds up recurring amounts", () => {
-      const ctx = contextFrom(
-        lines(
+      it("does not depend on what has been used before", () => {
+        const cfg = lines(
           "[ITEM_1]",
-          "recurring=7",
-          "[ITEM_2]",
-          "recurring=4.5",
+          "hrs=5",
+          "rate=6",
           "[EXPENSE_1]",
-          "recurring=1"
-        )
-      );
-      expect(ctx.getVariable("total_recurring_due")).toBe("12.50");
-      expect(ctx.getVariable("ALL_ITEMS.total_recurring_due")).toBe("11.50");
-      expect(ctx.getVariable("ALL_EXPENSES.total_recurring_due")).toBe("1.00");
-    });
-
-    it("does not overwrite totals provided in META", () => {
-      const ctx = contextFrom(
-        lines(
-          "[META]",
-          "total_due=999",
-          "total_recurring_due=888",
-          "[ITEM_1]",
-          "hrs=1",
-          "rate=1",
-          "recurring=1"
-        )
-      );
-      expect(ctx.getVariable("total_due")).toBe("999");
-      expect(ctx.getVariable("total_recurring_due")).toBe("888");
-      expect(ctx.getVariable("ALL_ITEMS.total_due")).toBe("1.00");
-    });
-
-    it("only skips the total that was provided", () => {
-      const ctx = contextFrom(
-        lines(
-          "[META]",
-          "total_due=999",
-          "[ITEM_1]",
-          "hrs=1",
-          "rate=1",
-          "recurring=3"
-        )
-      );
-      expect(ctx.getVariable("total_due")).toBe("999");
-      expect(ctx.getVariable("total_recurring_due")).toBe("3.00");
-    });
-
-    it("does not overwrite a total provided in the DEFAULT section", () => {
-      const ctx = contextFrom(
-        lines("[DEFAULT]", "total_due=5", "[ITEM_1]", "hrs=1", "rate=1")
-      );
-      expect(ctx.getVariable("total_due")).toBe("5");
-    });
-  });
-
-  describe("ALL_<prefix>S sections", () => {
-    it("joins every item's options with commas", () => {
-      const ctx = contextFrom(
-        lines("[ITEM_1]", "hrs=5", "rate=6", "[ITEM_2]", "hrs=2", "rate=3")
-      );
-      expect(ctx.getVariable("ALL_ITEMS.hrs")).toBe("5, 2");
-      expect(ctx.getVariable("ALL_ITEMS.rate")).toBe("6, 3");
-      expect(ctx.getVariable("ALL_ITEMS.total_due")).toBe("36.00");
-    });
-
-    it("is built from the options as written, before normalisation", () => {
-      const ctx = contextFrom("[ITEM_1]\nhrs=5.5\nrate=2");
-      expect(ctx.getVariable("ALL_ITEMS.hrs")).toBe("5.5");
-      expect(ctx.getVariable("ALL_ITEMS.id")).toBe("");
-      expect(ctx.getVariable("ALL_ITEMS.subtotal")).toBe("");
-    });
-
-    it("only lists options that items have", () => {
-      const ctx = contextFrom(lines("[ITEM_1]", "hrs=5", "[ITEM_2]", "days=2"));
-      expect(ctx.getVariable("ALL_ITEMS.hrs")).toBe("5");
-      expect(ctx.getVariable("ALL_ITEMS.days")).toBe("2");
-      expect(ctx.getVariable("ALL_ITEMS.rate")).toBe("");
-    });
-
-    it("has an empty recurring total when nothing recurs", () => {
-      const ctx = contextFrom("[ITEM_1]\nhrs=1\nrate=1");
-      expect(ctx.getVariable("ALL_ITEMS.total_recurring_due")).toBe("");
-    });
-
-    it("has an empty recurring total when recurring amounts are zero", () => {
-      const ctx = contextFrom("[ITEM_1]\nrecurring=0");
-      expect(ctx.getVariable("ALL_ITEMS.total_recurring_due")).toBe("");
-    });
-
-    it("is not created when there are no items", () => {
-      expect(contextFrom("").getVariable("ALL_ITEMS.total_due")).toBe("");
-    });
-
-    // Regression: when the section already exists its options are appended to
-    // and no totals are written
-    it("appends to a section that already exists without totals", () => {
-      const ctx = contextFrom(
-        lines("[ALL_ITEMS]", "hrs=1", "keep=me", "[ITEM_1]", "hrs=5", "rate=2")
-      );
-      expect(ctx.getVariable("ALL_ITEMS.hrs")).toBe("1, 5");
-      expect(ctx.getVariable("ALL_ITEMS.rate")).toBe("2");
-      expect(ctx.getVariable("ALL_ITEMS.keep")).toBe("me");
-      expect(ctx.getVariable("ALL_ITEMS.total_due")).toBe("");
-      expect(ctx.getVariable("total_due")).toBe("10.00");
-    });
-
-    it("appends to options inherited from the DEFAULT section", () => {
-      const ctx = contextFrom(
-        lines("[DEFAULT]", "currency=GBP", "[ITEM_1]", "hrs=1")
-      );
-      expect(ctx.getVariable("ALL_ITEMS.currency")).toBe("GBP, GBP");
+          "qty=2",
+          "price=10"
+        );
+        const forwards = contextFrom(cfg);
+        const backwards = contextFrom(cfg);
+        const names = ["ITEM_total_due", "EXPENSE_total_due", "ITEM_hrs"];
+        expect(names.map(name => forwards.getVariable(name))).toEqual(
+          names
+            .toReversed()
+            .map(name => backwards.getVariable(name))
+            .toReversed()
+        );
+      });
     });
   });
 });

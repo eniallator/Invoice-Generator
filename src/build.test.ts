@@ -10,8 +10,8 @@ const FILES = {
   "main.cfg": lines("[META]", "name=World", "[ITEM_1]", "hrs=2", "rate=5"),
   "templates/template.tex": lines(
     "Hello {{ name }}!",
-    "{* map ./item.tex ITEM *}",
-    "Total: {{ total_due }}"
+    "{* map ./item.tex ITEM */}",
+    "Total: {{ ITEM_total_due }}"
   ),
   "templates/item.tex": "{{ ITEM.id }}={{ ITEM.subtotal }}\n",
 };

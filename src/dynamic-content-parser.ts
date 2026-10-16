@@ -1,28 +1,21 @@
-import { dirname } from "node:path";
 import { raise } from "niall-utils";
 
 import type { ContextVariables, Extra } from "./context-variables.ts";
 import { DIRECTIVES, isDirectiveName } from "./directives.ts";
-import { isFile, parseItemPath, readText } from "./io.ts";
 
 const VARIABLE_RE = /\{\{\s*([\w.]+)\s*\}\}/g;
 
-// Groups: 1 = name, 2 = rest, 3 = file path, 4 = args
-const directivePattern = (name: string): string =>
-  String.raw`\{\*\s*${name}\s+(("[^"]+"|'[^']+'|[^\s"]+)?\s*([^*]+)?)\s*\*\}`;
+// `{* name args *}` opens a block that is closed by `{/* name *}`, whereas
+// `{* name args */}` is self closing.
+// Groups: 1 = name, 2 = args, 3 = "/" if self closing
+const DIRECTIVE_RE = /\{\*\s*(\w+)((?:\s[^*]*)?)\*(\/?)\}/;
 
-const DIRECTIVE_RE = new RegExp(directivePattern(String.raw`(\w+)`));
-
+// Only block openings: a self closing `*/}` never matches
 const openingDirectiveRe = (name: string): RegExp =>
-  new RegExp(directivePattern(name), "g");
+  new RegExp(String.raw`\{\*\s*${name}(?:\s[^*]*)?\*\}`, "g");
 
 const closingDirectiveRe = (name: string): RegExp =>
   new RegExp(String.raw`\{/\*\s*${name}\s*\*\}`);
-
-const sanitizeArgs = (args: string | undefined): string | undefined => {
-  const trimmed = args?.trim();
-  return trimmed === "" ? undefined : trimmed;
-};
 
 /** Finds the end of the contents and of the closing tag, skipping nested directives of the same name */
 const findClosingDirective = (
@@ -69,43 +62,34 @@ export class DynamicContentParser {
     match: RegExpExecArray,
     templateContents: string
   ): [replacement: string, end: number] {
-    const [opening, name = "", rest, rawFilePath, args] = match;
-    const directive = isDirectiveName(name)
-      ? DIRECTIVES[name]
-      : raise(new Error(`Unknown directive: ${name}`));
-    const run = (contents: string, contentsPath: string, rawArgs?: string) =>
-      directive({
-        args: sanitizeArgs(rawArgs),
+    const [opening, name = "", args = "", selfClosing = ""] = match;
+    if (!isDirectiveName(name)) {
+      raise(new Error(`Unknown directive: ${name}`));
+    }
+    const run = (contents: string | undefined) =>
+      DIRECTIVES[name]({
+        args: args.trim() === "" ? undefined : args.trim(),
         contents,
-        contentsPath,
+        basePath: this.basePath,
         contextVariables: this.contextVariables,
         extra: this.extra,
-        parse: (parsed, path, extra) =>
+        parse: (parsed, basePath, extra) =>
           new DynamicContentParser(
             this.contextVariables,
-            path,
+            basePath,
             extra
           ).parseString(parsed),
       });
     const matchEnd = match.index + opening.length;
 
-    const filePath =
-      rawFilePath === undefined
-        ? undefined
-        : parseItemPath(rawFilePath, this.basePath);
-    if (filePath !== undefined && isFile(filePath)) {
-      return [run(readText(filePath), dirname(filePath), args), matchEnd];
-    }
+    if (selfClosing !== "") return [run(undefined), matchEnd];
 
     const { contentsEnd, end } = findClosingDirective(
       templateContents,
       name,
       matchEnd
     );
-    return [
-      run(templateContents.slice(matchEnd, contentsEnd), this.basePath, rest),
-      end,
-    ];
+    return [run(templateContents.slice(matchEnd, contentsEnd)), end];
   }
 
   parseString(contents: string): string {

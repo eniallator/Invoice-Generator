@@ -50,11 +50,9 @@ import=./default
 
 ### Invoice Items
 
-Invoice items are sections which have the `ITEM_` prefix, where what follows is the item ID. e.g `ITEM_1` has an ID of `1`, but `ITEM_ONE` has an ID of `ONE`.
+Invoice items are sections which have the `ITEM_` prefix, where what follows is the item ID. e.g `ITEM_1` has an ID of `1`, but `ITEM_ONE` has an ID of `ONE`. Any other group of sections with a shared prefix (e.g. `EXPENSE_`) works in exactly the same way. Nothing is worked out for a group until it is used, either by mapping over it or by using one of its variables.
 
-One implicit calculation that takes place is with the `recurring` options. If there are any instances of `recurring` inside the ITEM(s), then there will be a `total_recurring_due` option added to the `META` section.
-
-To take advantage of the subtotal/total calculations, each item must have the following options: `rate`, and `hrs`. These are then used to work out a `subtotal` option. These subtotals are also added up into a `total_due` option in the `META` section. Prices (`rate` and `price`) are always formatted to 2 decimal places, whereas quantities (`hrs`, `days` and `qty`) are only reformatted if they are written with a decimal point. For example:
+To take advantage of the subtotal/total calculations, each item must have the following options: `rate`, and `hrs`. These are then used to work out a `subtotal` option. Prices (`rate` and `price`) are always formatted to 2 decimal places, whereas quantities (`hrs`, `days` and `qty`) are only reformatted if they are written with a decimal point. For example:
 
 ```properties
 [ITEM_1]
@@ -70,14 +68,9 @@ rate=3
 recurring=4
 ```
 
-when parsed will become the equivalent of passing the following in:
+will give each item the following options:
 
 ```properties
-[META]
-
-total_due=36.00
-total_recurring_due=11.00
-
 [ITEM_1]
 
 id=1
@@ -94,6 +87,17 @@ hrs=2
 rate=3.00
 recurring=4.00
 ```
+
+Every group also has some variables of its own, which can be used like any other context variable. They live in the `META` section (so `ITEM_total_due` is the same as `META.ITEM_total_due`) and are named after the group's prefix followed by an underscore:
+
+- `ITEM_total_due`
+  - The subtotals of all the items added up (`36.00` here).
+- `ITEM_total_recurring_due`
+  - The `recurring` options of all the items added up (`11.00` here). This is empty if nothing recurs.
+- `ITEM_<option>` (e.g. `ITEM_hrs`)
+  - Every item's value for the option, as it was written in the config, joined with commas (`5, 2` here). This is handy for checking whether any item has an option with the `when` directive.
+
+If the name could be split into a prefix and an option in more than one way, the longest prefix that has items is used. A variable in the config with the same name always takes priority. To combine the totals of different groups, see the [add directive](#add-directive).
 
 ## Template Files
 
@@ -132,9 +136,11 @@ If the parser cannot find a specific context variable, it will replace the varia
 
 ### Map Directive
 
-Directives have the following syntax: `{* name (contents file path) args *}`, where `name` is the name of the directive, `contents file path` is the path to the contents which are given to the directive and `args` are the directive's arguments.
+Directives have two forms. The first is a block, `{* name args *}contents{/* name *}`, where `name` is the name of the directive, `args` is everything after the name (it is optional for some directives) and the contents are everything between the opening and closing tags (the closing tag must have the same name). The second is self closing, `{* name args */}`, which has no contents.
 
-The map directive will take in a path of an external LaTeX file which is the contents file path and the section prefix (e.g. `ITEM`) to map over. The file will be parsed with the context variables as well as any directives (due to the parser being recursive), as well as with the addition of the section prefix added to the context variables, which is the current invoice item. For example:
+Some directives (`map`, `when` and `unless`) can also take their contents from another file. For these, use the self closing form where the first argument is the path of the file, followed by the directive's other arguments. Relative paths are resolved from the file that the directive is in, and paths can be quoted with `"` or `'` if they contain spaces.
+
+The map directive takes in the section prefix (e.g. `ITEM`) to map over, and repeats its contents once for every section named `<prefix>_<id>`, in alphabetical order. The contents will be parsed with the context variables as well as any directives (due to the parser being recursive), as well as with the addition of the section prefix added to the context variables, which is the current invoice item. For example:
 
 config:
 
@@ -155,8 +161,8 @@ invoice template:
 ```LaTeX
 Invoice Items:
 ID, hrs, rate, subtotal
-{* map ./invoice_item.tex ITEM *}
-Total: {{ total_due }}
+{* map ./invoice_item.tex ITEM */}
+Total: {{ ITEM_total_due }}
 ```
 
 ./invoice_item.tex
@@ -175,11 +181,13 @@ ID, hrs, rate, subtotal
 Total: 36.00
 ```
 
+Everything else stays available inside the contents too: the group's variables (like `ITEM_total_due`) and the items of any outer maps, so maps can be nested. An inner item with the same prefix replaces the outer one.
+
 ### Inline Items Directive
 
-Directives can also be inline, where there will also have to be a closing tag for the directive. Any contents in between the opening and closing tags will then be parsed and replaced by the directive's output.
+Instead of using a contents file, the contents can be written between the opening and closing tags. Any contents in between the tags will then be parsed and replaced by the directive's output.
 
-The inline directive syntax is as follows: `{* name args *}...{/* name *}` where instead of a contents file path, the contents will be whats inside the opening and closing tags. One note is that the name has to be the same as the name in the opening tag.
+The inline directive syntax is as follows: `{* name args *}...{/* name *}`. One note is that the name has to be the same as the name in the opening tag.
 
 All directives will be executed in the order that they appear. This means that any context from outer directives will be taken into account (e.g. the `ITEM` context variable can then be used alongside the `when` directive to achieve some pretty complex situations)
 
@@ -205,7 +213,7 @@ With the following invoice template:
 Invoice Items:
 ID, hrs, rate, subtotal{* map ITEM *}
 {{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{/* map *}
-Total: {{ total_due }}
+Total: {{ ITEM_total_due }}
 ```
 
 Will generate the same output as above:
@@ -246,10 +254,10 @@ With the following template:
 
 ```LaTeX
 Invoice Items:
-ID, hrs, rate, subtotal{* when total_recurring_due *}, Recurring{/* when *}{* map ITEM *}
-{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* when total_recurring_due *}, {{ITEM.recurring}}{/* when *}{/* map *}
-Total: {{ total_due }}{* when total_recurring_due *}
-Total Recurring: {{total_recurring_due}}{/* when *}
+ID, hrs, rate, subtotal{* when ITEM_total_recurring_due *}, Recurring{/* when *}{* map ITEM *}
+{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* when ITEM_total_recurring_due *}, {{ITEM.recurring}}{/* when *}{/* map *}
+Total: {{ ITEM_total_due }}{* when ITEM_total_recurring_due *}
+Total Recurring: {{ITEM_total_recurring_due}}{/* when *}
 ```
 
 Will generate:
@@ -285,4 +293,38 @@ ID, hrs, rate, subtotal
 1, 5, 6.00, 30.00
 2, 2, 3.00, 6.00
 Total: 36.00
+```
+
+### Add Directive
+
+The add directive adds up context variables and is replaced by the total, shown to 2 decimal places. It needs at least two variables, separated by whitespace, which can be given as the arguments, as the contents or a mixture of the two (the arguments and contents are simply joined together). Variables that are empty or don't exist count as zero. This is how the totals of different groups can be combined. For example:
+
+With the following config:
+
+```properties
+[ITEM_1]
+
+hrs=5
+rate=6
+
+[EXPENSE_1]
+
+qty=2
+price=10
+```
+
+All of these templates:
+
+```LaTeX
+Total: {* add ITEM_total_due EXPENSE_total_due */}
+Total: {* add ITEM_total_due *}EXPENSE_total_due{/* add *}
+Total: {* add *}ITEM_total_due EXPENSE_total_due{/* add *}
+```
+
+Will generate:
+
+```LaTeX
+Total: 50.00
+Total: 50.00
+Total: 50.00
 ```

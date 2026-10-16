@@ -2,64 +2,60 @@ import { raise } from "niall-utils";
 
 import type { Config } from "./config.ts";
 import { loadConfig, META } from "./imports.ts";
-import {
-  joinValues,
-  mergeItems,
-  normaliseItem,
-  sumOption,
-  type Item,
-} from "./items.ts";
+import { mergeItems, normaliseItem, sumOption, type Item } from "./items.ts";
 import { formatFixed2 } from "./numbers.ts";
 
 export type { Item } from "./items.ts";
 export type Extra = ReadonlyMap<string, Item>;
 
+interface Group {
+  items: Item[];
+  /** The group's precomputed variables, e.g. `total_due` and the joined `hrs` */
+  values: Item;
+}
+
+const groupValues = (
+  rawItems: readonly Item[],
+  items: readonly Item[]
+): Item => {
+  if (items.length === 0) return new Map();
+  const totalRecurring = sumOption(items, "recurring");
+  return new Map([
+    ...mergeItems(rawItems),
+    ["total_due", formatFixed2(sumOption(items, "subtotal"))],
+    [
+      "total_recurring_due",
+      totalRecurring > 0 ? formatFixed2(totalRecurring) : "",
+    ],
+  ]);
+};
+
+/**
+ * Holds the variables that templates can use. Nothing is computed until it is
+ * asked for: a group of `<prefix>_<id>` sections (e.g. `ITEM_1`, `ITEM_2`) is
+ * only worked out the first time it is mapped over or one of its variables is
+ * used, and the config itself is never modified after it has been loaded.
+ */
 export class ContextVariables {
   private readonly config: Config;
-  private readonly builtItems = new Map<string, Item[]>();
-  private readonly shouldTotalDue: boolean;
-  private readonly shouldTotalRecurringDue: boolean;
+  private readonly groups = new Map<string, Group>();
 
   constructor(basePath: string) {
     this.config = loadConfig(basePath);
-    this.shouldTotalDue = !this.config.hasOption(META, "total_due");
-    this.shouldTotalRecurringDue = !this.config.hasOption(
-      META,
-      "total_recurring_due"
-    );
-
-    this.calculateItems("ITEM");
-    this.calculateItems("EXPENSE");
   }
 
+  /** The items of every section named `<prefix>_<id>`, in alphabetical order */
   calculateItems(prefix: string): Item[] {
-    const cached = this.builtItems.get(prefix);
-    if (cached !== undefined) return cached;
-
-    const sectionPrefix = `${prefix}_`;
-    const sections = this.config
-      .sectionNames()
-      .filter(section => section.startsWith(sectionPrefix))
-      .sort();
-    const entries = sections.map(section => ({
-      raw: this.config.items(section),
-      id: section.slice(sectionPrefix.length),
-    }));
-    const rawItems = entries.map(({ raw }) => raw);
-    const items = entries.map(({ raw, id }) => normaliseItem(raw, id));
-    this.builtItems.set(prefix, items);
-
-    const total = sumOption(items, "subtotal");
-    const totalRecurring = sumOption(items, "recurring");
-    this.writeAllSection(`ALL_${prefix}S`, rawItems, total, totalRecurring);
-
-    if (this.shouldTotalDue) this.addToMeta("total_due", total);
-    if (this.shouldTotalRecurringDue && totalRecurring > 0) {
-      this.addToMeta("total_recurring_due", totalRecurring);
-    }
-    return items;
+    return this.group(prefix).items;
   }
 
+  /**
+   * Looks up `section.option`, or `option` in META. Anything in META that is not
+   * in the config can also be a group variable, so `ITEM_total_due` is the same
+   * as `META.ITEM_total_due`: `<prefix>_total_due`,
+   * `<prefix>_total_recurring_due` or `<prefix>_<option>`, which is every item's
+   * value for that option joined with commas (e.g. `ITEM_hrs`).
+   */
   getVariable(varId: string, extra: Extra = new Map()): string {
     const separator = varId.indexOf(".");
     const section = separator === -1 ? META : varId.slice(0, separator);
@@ -70,44 +66,49 @@ export class ContextVariables {
       );
     }
     return (
-      extra.get(section)?.get(option) ?? this.config.get(section, option) ?? ""
+      extra.get(section)?.get(option) ??
+      this.config.get(section, option) ??
+      (section === META ? this.groupVariable(option) : undefined) ??
+      ""
     );
   }
 
-  /** `ALL_<prefix>S` has every item's options joined together, plus the totals */
-  private writeAllSection(
-    allSection: string,
-    rawItems: Item[],
-    total: number,
-    totalRecurring: number
-  ): void {
-    if (rawItems.length === 0) return;
-
-    const alreadyExisted = this.config.contains(allSection);
-    if (!this.config.hasSection(allSection)) this.config.addSection(allSection);
-
-    for (const [key, value] of mergeItems(rawItems)) {
-      this.config.set(
-        allSection,
-        key,
-        joinValues(this.config.get(allSection, key), value)
-      );
+  private groupVariable(name: string): string | undefined {
+    // The longest prefix is the most specific, so try it first: for
+    // `FOO_BAR_total_due` that is the `FOO_BAR` group before the `FOO` group
+    for (
+      let end = name.lastIndexOf("_");
+      end > 0;
+      end = name.lastIndexOf("_", end - 1)
+    ) {
+      const group = this.group(name.slice(0, end));
+      if (group.items.length > 0) return group.values.get(name.slice(end + 1));
     }
-    if (!alreadyExisted) {
-      this.config.set(allSection, "total_due", formatFixed2(total));
-      this.config.set(
-        allSection,
-        "total_recurring_due",
-        totalRecurring > 0 ? formatFixed2(totalRecurring) : ""
-      );
-    }
+    return undefined;
   }
 
-  private addToMeta(key: string, amount: number): void {
-    this.config.set(
-      META,
-      key,
-      formatFixed2(this.config.getFloat(META, key, 0) + amount)
-    );
+  private group(prefix: string): Group {
+    const cached = this.groups.get(prefix);
+    if (cached !== undefined) return cached;
+
+    const sectionPrefix = `${prefix}_`;
+    const entries = this.config
+      .sectionNames()
+      .filter(section => section.startsWith(sectionPrefix))
+      .sort()
+      .map(section => ({
+        raw: this.config.items(section),
+        id: section.slice(sectionPrefix.length),
+      }));
+    const items = entries.map(({ raw, id }) => normaliseItem(raw, id));
+    const group = {
+      items,
+      values: groupValues(
+        entries.map(({ raw }) => raw),
+        items
+      ),
+    };
+    this.groups.set(prefix, group);
+    return group;
   }
 }

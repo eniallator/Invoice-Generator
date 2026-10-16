@@ -60,9 +60,7 @@ describe("README: Command Usage", () => {
     });
     expect(
       parseCli(["--out-path", "./out/mine.tex", exampleCfg])
-    ).toMatchObject({
-      outPath: "./out/mine.tex",
-    });
+    ).toMatchObject({ outPath: "./out/mine.tex" });
   });
 
   it("--quote / -q switches the default template to the quote template", () => {
@@ -125,30 +123,59 @@ describe("README: Invoice Items", () => {
     ]);
   });
 
-  it("adds up the subtotals and recurring amounts into META", () => {
+  it("gives each item its id, subtotal and formatted numbers", () => {
+    const items = contextFrom(cfg)
+      .calculateItems("ITEM")
+      .map(item => Object.fromEntries(item));
+    expect(items).toEqual([
+      { id: "1", subtotal: "30.00", hrs: "5", rate: "6.00", recurring: "7.00" },
+      { id: "2", subtotal: "6.00", hrs: "2", rate: "3.00", recurring: "4.00" },
+    ]);
+  });
+
+  it("gives every group its total, recurring total and joined options", () => {
     const ctx = contextFrom(cfg);
-    expect(ctx.getVariable("total_due")).toBe("36.00");
-    expect(ctx.getVariable("total_recurring_due")).toBe("11.00");
+    expect(ctx.getVariable("ITEM_total_due")).toBe("36.00");
+    expect(ctx.getVariable("ITEM_total_recurring_due")).toBe("11.00");
+    expect(ctx.getVariable("ITEM_hrs")).toBe("5, 2");
   });
 
-  it("works out each item's id and subtotal and formats the recurring amount", () => {
-    const items = contextFrom(cfg)
-      .calculateItems("ITEM")
-      .map(item => Object.fromEntries(item));
-    expect(items).toMatchObject([
-      { id: "1", subtotal: "30.00", recurring: "7.00" },
-      { id: "2", subtotal: "6.00", recurring: "4.00" },
-    ]);
+  it("leaves the recurring total empty if nothing recurs", () => {
+    expect(contextFrom(ITEMS_CFG).getVariable("ITEM_total_recurring_due")).toBe(
+      ""
+    );
   });
 
-  it("formats rate to two decimal places and leaves whole hrs as written", () => {
-    const items = contextFrom(cfg)
-      .calculateItems("ITEM")
-      .map(item => Object.fromEntries(item));
-    expect(items).toMatchObject([
-      { hrs: "5", rate: "6.00" },
-      { hrs: "2", rate: "3.00" },
-    ]);
+  it("works the same for any other group, such as expenses", () => {
+    const ctx = contextFrom(lines("[EXPENSE_1]", "qty=2", "price=10"));
+    expect(ctx.getVariable("EXPENSE_total_due")).toBe("20.00");
+    expect(ctx.getVariable("EXPENSE_qty")).toBe("2");
+  });
+
+  it("uses the longest prefix that has items, and prefers the config", () => {
+    const ctx = contextFrom(
+      lines(
+        "[META]",
+        "ITEM_total_recurring_due=custom",
+        "[FOO_1]",
+        "qty=1",
+        "price=10",
+        "[FOO_BAR_1]",
+        "qty=3",
+        "price=2",
+        "[ITEM_1]",
+        "recurring=1"
+      )
+    );
+    expect(ctx.getVariable("FOO_BAR_total_due")).toBe("6.00");
+    expect(ctx.getVariable("FOO_total_due")).toBe("16.00");
+    expect(ctx.getVariable("ITEM_total_recurring_due")).toBe("custom");
+  });
+
+  it("does not work anything out until it is used", () => {
+    const ctx = contextFrom(lines("[ITEM_1]", "hrs=5", "rate=oops"));
+    expect(ctx.getVariable("some_other_variable")).toBe("");
+    expect(() => ctx.getVariable("ITEM_total_due")).toThrow();
   });
 });
 
@@ -188,7 +215,7 @@ describe("README: Map Directive", () => {
       lines(
         "Invoice Items:",
         "ID, hrs, rate, subtotal",
-        "{* map ./invoice_item.tex ITEM *}Total: {{ total_due }}"
+        "{* map ./invoice_item.tex ITEM */}Total: {{ ITEM_total_due }}"
       ),
       ITEMS_CFG,
       {
@@ -206,6 +233,45 @@ describe("README: Map Directive", () => {
       )
     );
   });
+
+  it("repeats the contents for each section in alphabetical order", () => {
+    expect(
+      render(
+        "{* map ITEM *}{{ ITEM.id }};{/* map *}",
+        lines("[ITEM_b]", "[ITEM_a]", "[ITEM_c]", "[OTHER_x]")
+      )
+    ).toBe("a;b;c;");
+  });
+
+  it("keeps the group's variables and outer items available inside", () => {
+    const cfg = lines(
+      ITEMS_CFG,
+      "[EXPENSE_1]",
+      "description=Travel",
+      "qty=1",
+      "price=10"
+    );
+    const result = render(
+      "{* map ITEM *}Item {{ ITEM.id }} ({{ ITEM.subtotal }} of {{ ITEM_total_due }}):{* map EXPENSE *} {{ EXPENSE.description }}{/* map *}\n{/* map *}",
+      cfg
+    );
+    expect(result).toBe(
+      lines(
+        "Item 1 (30.00 of 36.00): Travel",
+        "Item 2 (6.00 of 36.00): Travel",
+        ""
+      )
+    );
+  });
+
+  it("lets an inner item replace an outer one with the same prefix", () => {
+    expect(
+      render(
+        "{* map ITEM *}{* map ITEM *}{{ ITEM.id }}{/* map *}|{/* map *}",
+        ITEMS_CFG
+      )
+    ).toBe("12|12|");
+  });
 });
 
 describe("README: Inline Items Directive", () => {
@@ -215,7 +281,7 @@ describe("README: Inline Items Directive", () => {
         "Invoice Items:",
         "ID, hrs, rate, subtotal{* map ITEM *}",
         "{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{/* map *}",
-        "Total: {{ total_due }}"
+        "Total: {{ ITEM_total_due }}"
       ),
       ITEMS_CFG
     );
@@ -234,10 +300,10 @@ describe("README: Inline Items Directive", () => {
 describe("README: When Directive", () => {
   const template = lines(
     "Invoice Items:",
-    "ID, hrs, rate, subtotal{* when total_recurring_due *}, Recurring{/* when *}{* map ITEM *}",
-    "{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* when total_recurring_due *}, {{ITEM.recurring}}{/* when *}{/* map *}",
-    "Total: {{ total_due }}{* when total_recurring_due *}",
-    "Total Recurring: {{total_recurring_due}}{/* when *}",
+    "ID, hrs, rate, subtotal{* when ITEM_total_recurring_due *}, Recurring{/* when *}{* map ITEM *}",
+    "{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* when ITEM_total_recurring_due *}, {{ITEM.recurring}}{/* when *}{/* map *}",
+    "Total: {{ ITEM_total_due }}{* when ITEM_total_recurring_due *}",
+    "Total Recurring: {{ITEM_total_recurring_due}}{/* when *}",
     ""
   );
 
@@ -270,8 +336,52 @@ describe("README: When Directive", () => {
 
   it("unless does the inverse of when", () => {
     const unless =
-      "{* unless total_recurring_due *}nothing recurring{/* unless *}";
+      "{* unless ITEM_total_recurring_due *}nothing recurring{/* unless *}";
     expect(render(unless, ITEMS_CFG)).toBe("nothing recurring");
     expect(render(unless, RECURRING_CFG)).toBe("");
+  });
+});
+
+describe("README: Add Directive", () => {
+  const cfg = lines(
+    "[ITEM_1]",
+    "",
+    "hrs=5",
+    "rate=6",
+    "",
+    "[EXPENSE_1]",
+    "",
+    "qty=2",
+    "price=10"
+  );
+
+  it("adds up the variables given as arguments", () => {
+    expect(
+      render("Total: {* add ITEM_total_due EXPENSE_total_due */}", cfg)
+    ).toBe("Total: 50.00");
+  });
+
+  it("adds up the variables given as the arguments and the contents", () => {
+    expect(
+      render("Total: {* add ITEM_total_due *}EXPENSE_total_due{/* add *}", cfg)
+    ).toBe("Total: 50.00");
+  });
+
+  it("counts empty and missing variables as zero", () => {
+    expect(
+      render("{* add ITEM_total_due ITEM_total_recurring_due NOPE */}", cfg)
+    ).toBe("30.00");
+  });
+
+  it("adds up the variables given as the contents alone", () => {
+    expect(
+      render("Total: {* add *}ITEM_total_due EXPENSE_total_due{/* add *}", cfg)
+    ).toBe("Total: 50.00");
+  });
+
+  it("needs at least two variables", () => {
+    expect(() => render("{* add ITEM_total_due */}", cfg)).toThrow(
+      "add directive needs at least two context variables to add up"
+    );
   });
 });
