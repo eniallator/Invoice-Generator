@@ -108,9 +108,15 @@ describe("normaliseItem", () => {
       expect(normalise({ qty: "3", price: "20" }).subtotal).toBe("60.00");
     });
 
-    it("keeps a provided subtotal exactly as written", () => {
+    it("formats a provided subtotal to two decimal places", () => {
       expect(normalise({ hrs: "5", rate: "6", subtotal: "12" }).subtotal).toBe(
-        "12"
+        "12.00"
+      );
+    });
+
+    it("throws for a provided subtotal that is not a number", () => {
+      expect(() => normalise({ subtotal: "lots" })).toThrow(
+        "could not convert string to float: 'lots'"
       );
     });
 

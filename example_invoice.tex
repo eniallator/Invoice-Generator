@@ -21,8 +21,8 @@
     urlcolor=blue
 }
 
-% \cen redefines \\, which breaks the row counting that striped rows rely on
-\newcommand{\cen}{\centering\arraybackslash}
+% The total is a fixed distance wide, so the word Total always sits the same distance from the right edge
+\newlength{\totalwidth}\setlength{\totalwidth}{4.5cm}
 \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
 \begin{document}
@@ -55,20 +55,22 @@
 \vspace{2 cm}
 
 \begingroup\renewcommand{\arraystretch}{1.5}\rowcolors{2}{white}{gray!15}
-\begin{tabularx}{\linewidth}{c X X X c}
-    \cen{\bf{ITEM}}               & \cen{\bf{DESCRIPTION}}       & \cen{\bf{HRS}}      & \cen{\bf{RATE(\pounds/HR)}}  & \bf SUB TOTAL(\pounds)                   \\[1ex]\hline
-    \cen 1            & \cen Random Project  & \cen 15 &  \cen 20.00                       & 300.00                                     \\
-    
+\begin{tabularx}{\linewidth}{l X X X r}
+    \bf{ITEM}                     & \bf{DESCRIPTION}             & \bf{HRS}            & \bf{RATE(\pounds/HR)}  & \bf SUB TOTAL(\pounds)                   \\[1ex]\hline
+     1st Dec                 & Random Project       & 8      &  20.00                           & 160.00                                     \\
+     2nd Dec                 & Random Project       & 7      &  20.00                           & 140.00                                     \\
+     3rd Dec                 & Random Project       & 6      &  20.00                           & 120.00                                     \\
 \end{tabularx}\endgroup
 
 \vspace{0.5 cm}
 
 \begingroup\renewcommand{\arraystretch}{1.5}\rowcolors{2}{white}{gray!15}
-\begin{tabularx}{\linewidth}{c X c c c}
-    \cen{\bf{EXPENSE}}    & \cen{\bf{DESCRIPTION}}  & \cen{\bf{QTY}}         & \cen{\bf{RATE(\pounds)}} & \bf SUB TOTAL(\pounds)         \\[1ex]\hline
-    \cen 1 & Travel cost     & \cen 2 &  \cen 10.00                & 20.00                        \\
-    \rowcolor{white}            &                             &                              &  \bf \large{Total}                            & \large{\pounds320.00} \\[2.5ex]\hhline{~~~--}
+\begin{tabularx}{\linewidth}{l X l l r}
+    \bf{EXPENSE}          & \bf{DESCRIPTION}        & \bf{QTY}               & \bf{RATE(\pounds)} & \bf SUB TOTAL(\pounds)         \\[1ex]\hline
+    1      & Travel cost     & 2       &  10.00                & 20.00                        \\
 \end{tabularx}\endgroup
+
+\par\vspace{2ex}\noindent\hfill\underline{\makebox[\totalwidth]{\rule[-0.9ex]{0pt}{0pt}\bf\large Total\hfill\normalfont\large{\pounds440.00}}}
 
 \vspace{3 cm}
 

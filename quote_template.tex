@@ -21,8 +21,8 @@
     urlcolor=blue
 }
 
-% \cen redefines \\, which breaks the row counting that striped rows rely on
-\newcommand{\cen}{\centering\arraybackslash}
+% The total is a fixed distance wide, so the word Total always sits the same distance from the right edge
+\newlength{\totalwidth}\setlength{\totalwidth}{4.5cm}
 \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
 \begin{document}
@@ -54,11 +54,12 @@
 \vspace{1 cm}
 
 \begingroup\renewcommand{\arraystretch}{1.5}\rowcolors{2}{white}{gray!15}
-\begin{tabularx}{\linewidth}{c X c}
-  \cen{\bf{ITEM}}    & \cen{\bf{DESCRIPTION}} & \bf SUB TOTAL                                 \\[1ex]\hline{* map ITEM *}
-  \cen {{ ITEM.id }} & {{ ITEM.description }}       & {{PAYMENT.currency}}{{ ITEM.subtotal }}       \\{/* map *}
-  \rowcolor{white}         & \bf \large{Total}            & \large{{{ PAYMENT.currency }}{{ ITEM_total_due }}{* unless ITEM_total_due *}0.00{/* unless *}} \\[2.5ex]\hhline{~--}
+\begin{tabularx}{\linewidth}{l X r}
+  \bf{ITEM}    & \bf{DESCRIPTION}       & \bf SUB TOTAL                                 \\[1ex]\hline{* map ITEM *}
+  {{ ITEM.id }} & {{ ITEM.description }}       & {{PAYMENT.currency}}{{ ITEM.subtotal }}       \\{/* map *}
 \end{tabularx}\endgroup
+
+\par\vspace{2ex}\noindent\hfill\underline{\makebox[\totalwidth]{\rule[-0.9ex]{0pt}{0pt}\bf\large Total\hfill\normalfont\large{{{ PAYMENT.currency }}{{ ITEM_total_due }}{* unless ITEM_total_due *}0.00{/* unless *}}}}
 
 \vspace{3 cm}
 

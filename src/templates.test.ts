@@ -53,8 +53,8 @@ const quote = (...sections: string[]) =>
     )
   );
 
-const ITEM_TABLE = "{\\bf{ITEM}}";
-const EXPENSE_TABLE = "{\\bf{EXPENSE}}";
+const ITEM_TABLE = "\\bf{ITEM}";
+const EXPENSE_TABLE = "\\bf{EXPENSE}";
 
 describe("invoice_template.tex", () => {
   it("fills in the parties and payment details", () => {
@@ -80,17 +80,17 @@ describe("invoice_template.tex", () => {
 
     it("shows the item table with each item", () => {
       expect(result).toContain(ITEM_TABLE);
-      expect(result).toContain("\\cen 1");
-      expect(result).toContain("\\cen Work");
-      expect(result).toContain("\\cen 2");
-      expect(result).toContain("\\cen More work");
+      expect(result).toMatch(/1\s*&\s*Work/);
+      expect(result).toMatch(/2\s*&\s*More work/);
     });
 
     it("shows each item's formatted rate and subtotal", () => {
-      expect(result).toContain("\\cen 6.00");
-      expect(result).toContain("30.00");
-      expect(result).toContain("\\cen 3.00");
-      expect(result).toContain("6.00");
+      expect(result).toMatch(/5\s*&\s*6\.00\s*&\s*30\.00/);
+      expect(result).toMatch(/2\s*&\s*3\.00\s*&\s*6\.00/);
+    });
+
+    it("left aligns every column but the subtotal, which is right aligned", () => {
+      expect(result).toContain("{l X X X r}");
     });
 
     it("totals the items in the item table", () => {
@@ -137,8 +137,8 @@ describe("invoice_template.tex", () => {
     });
 
     it("leaves out the columns that no expense uses", () => {
-      expect(result).not.toContain("{\\bf{QTY}}");
-      expect(result).not.toContain("{\\bf{RATE(\\pounds)}}");
+      expect(result).not.toContain("\\bf{QTY}");
+      expect(result).not.toContain("\\bf{RATE(\\pounds)}");
     });
   });
 
@@ -155,15 +155,15 @@ describe("invoice_template.tex", () => {
   describe("columns", () => {
     it("shows the hours and rate columns when items use them", () => {
       const result = invoice("[ITEM_1]", "hrs=5", "rate=6");
-      expect(result).toContain("{\\bf{HRS}}");
-      expect(result).toContain("{\\bf{RATE(\\pounds/HR)}}");
-      expect(result).not.toContain("{\\bf{DAYS}}");
+      expect(result).toContain("\\bf{HRS}");
+      expect(result).toContain("\\bf{RATE(\\pounds/HR)}");
+      expect(result).not.toContain("\\bf{DAYS}");
     });
 
     it("shows the days column when items use it", () => {
       const result = invoice("[ITEM_1]", "days=2", "rate=100");
-      expect(result).toContain("{\\bf{DAYS}}");
-      expect(result).not.toContain("{\\bf{HRS}}");
+      expect(result).toContain("\\bf{DAYS}");
+      expect(result).not.toContain("\\bf{HRS}");
       expect(result).toContain("\\large{\\pounds200.00}");
     });
 
@@ -176,15 +176,15 @@ describe("invoice_template.tex", () => {
         "days=2",
         "rate=100"
       );
-      expect(result).toContain("{\\bf{HRS}}");
-      expect(result).toContain("{\\bf{DAYS}}");
+      expect(result).toContain("\\bf{HRS}");
+      expect(result).toContain("\\bf{DAYS}");
       expect(result).toContain("\\large{\\pounds230.00}");
     });
 
     it("shows the quantity and rate columns for expenses that use them", () => {
       const result = invoice("[EXPENSE_1]", "qty=2", "price=10", "rate=10");
-      expect(result).toContain("{\\bf{QTY}}");
-      expect(result).toContain("{\\bf{RATE(\\pounds)}}");
+      expect(result).toContain("\\bf{QTY}");
+      expect(result).toContain("\\bf{RATE(\\pounds)}");
     });
   });
 
@@ -224,10 +224,20 @@ describe("quote_template.tex", () => {
     );
 
     it("lists each item with its subtotal", () => {
-      expect(result).toContain("\\cen 1 & Build");
+      expect(result).toContain("1 & Build");
       expect(result).toContain("\\pounds30.00");
-      expect(result).toContain("\\cen 2 & Test");
+      expect(result).toContain("2 & Test");
       expect(result).toContain("\\pounds6.00");
+    });
+
+    it("left aligns every column but the subtotal, which is right aligned", () => {
+      expect(result).toContain("{l X r}");
+    });
+
+    it("shows a provided subtotal to two decimal places", () => {
+      expect(quote("[ITEM_1]", "description=Build", "subtotal=300")).toContain(
+        "\\pounds300.00"
+      );
     });
 
     it("totals the items", () => {

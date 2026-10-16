@@ -43,13 +43,15 @@ export const normaliseItem = (raw: Item, defaultId: string): Item => {
     }
   }
 
+  for (const key of ["subtotal", "recurring"]) {
+    const value = item.get(key);
+    if (value !== undefined) {
+      item.set(key, formatFixed2(parseFloatStrict(value)));
+    }
+  }
+
   const subtotal = item.get("subtotal") ?? computeSubtotal(item);
   if (subtotal !== undefined) item.set("subtotal", subtotal);
-
-  const recurring = item.get("recurring");
-  if (recurring !== undefined) {
-    item.set("recurring", formatFixed2(parseFloatStrict(recurring)));
-  }
   return item;
 };
 

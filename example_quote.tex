@@ -21,8 +21,8 @@
     urlcolor=blue
 }
 
-% \cen redefines \\, which breaks the row counting that striped rows rely on
-\newcommand{\cen}{\centering\arraybackslash}
+% The total is a fixed distance wide, so the word Total always sits the same distance from the right edge
+\newlength{\totalwidth}\setlength{\totalwidth}{4.5cm}
 \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
 \begin{document}
@@ -54,11 +54,14 @@
 \vspace{1 cm}
 
 \begingroup\renewcommand{\arraystretch}{1.5}\rowcolors{2}{white}{gray!15}
-\begin{tabularx}{\linewidth}{c X c}
-  \cen{\bf{ITEM}}    & \cen{\bf{DESCRIPTION}} & \bf SUB TOTAL                                 \\[1ex]\hline
-  \cen 1 & Random Project       & \pounds300       \\
-  \rowcolor{white}         & \bf \large{Total}            & \large{\pounds300.00} \\[2.5ex]\hhline{~--}
+\begin{tabularx}{\linewidth}{l X r}
+  \bf{ITEM}    & \bf{DESCRIPTION}       & \bf SUB TOTAL                                 \\[1ex]\hline
+  1 & Random Project       & \pounds300.00       \\
+  2 & Another Project       & \pounds200.00       \\
+  3 & Final Project       & \pounds150.00       \\
 \end{tabularx}\endgroup
+
+\par\vspace{2ex}\noindent\hfill\underline{\makebox[\totalwidth]{\rule[-0.9ex]{0pt}{0pt}\bf\large Total\hfill\normalfont\large{\pounds650.00}}}
 
 \vspace{3 cm}
 
@@ -74,6 +77,8 @@
 
 \begin{itemize}
   \item \textbf{Random Project} - Here's one of the example tasks I will complete for this project
+  \item \textbf{Another Project} - Here's one of the example tasks I will complete for this other project
+  \item \textbf{Final Project} - Here's one of the example tasks I will complete for this final project
 \end{itemize}
 
 \end{document}

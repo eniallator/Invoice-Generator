@@ -21,8 +21,8 @@
     urlcolor=blue
 }
 
-% \cen redefines \\, which breaks the row counting that striped rows rely on
-\newcommand{\cen}{\centering\arraybackslash}
+% The total is a fixed distance wide, so the word Total always sits the same distance from the right edge
+\newlength{\totalwidth}\setlength{\totalwidth}{4.5cm}
 \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
 \begin{document}
@@ -55,20 +55,22 @@
 \vspace{2 cm}{* when ITEM_total_due *}
 
 \begingroup\renewcommand{\arraystretch}{1.5}\rowcolors{2}{white}{gray!15}
-\begin{tabularx}{\linewidth}{c X {* when ITEM_hrs *}X {/* when *}{* when ITEM_days *}X {/* when *}{* when ITEM_rate *}X {/* when *}c}
-    \cen{\bf{ITEM}}               & \cen{\bf{DESCRIPTION}}      {* when ITEM_hrs *} & \cen{\bf{HRS}}{/* when *}{* when ITEM_days *}      & \cen{\bf{DAYS}}{/* when *}{* when ITEM_rate *}      & \cen{\bf{RATE({{ PAYMENT.currency }}/HR)}} {/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})                   \\[1ex]\hline{* map ITEM *}
-    \cen {{ ITEM.id }}            & \cen {{ ITEM.description }} {* when ITEM_hrs *} & \cen {{ ITEM.hrs }}{/* when *}{* when ITEM_days *} & \cen {{ ITEM.days }}{/* when *}{* when ITEM_rate *} & {/* when *} \cen {{ ITEM.rate }}                       & {{ ITEM.subtotal }}                                     \\{/* map *}
-    {* unless EXPENSE_total_due *}\rowcolor{white} &{* when ITEM_hrs *}                                   & {/* when *}{* when ITEM_days *}                          & {/* when *}{* when ITEM_rate *}                           & {/* when *} \bf \large{Total}                                & \large{{{ PAYMENT.currency }}{{ ITEM_total_due }}} \\[2.5ex]\hhline{~~~--}{/* unless *}
-\end{tabularx}\endgroup{/* when *}{* when EXPENSE_total_due *}
+\begin{tabularx}{\linewidth}{l X {* when ITEM_hrs *}X {/* when *}{* when ITEM_days *}X {/* when *}{* when ITEM_rate *}X {/* when *}r}
+    \bf{ITEM}                     & \bf{DESCRIPTION}            {* when ITEM_hrs *} & \bf{HRS}{/* when *}{* when ITEM_days *}            & \bf{DAYS}{/* when *}{* when ITEM_rate *}            & \bf{RATE({{ PAYMENT.currency }}/HR)} {/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})                   \\[1ex]\hline{* map ITEM *}
+    {{ ITEM.id }}                 & {{ ITEM.description }}      {* when ITEM_hrs *} & {{ ITEM.hrs }}{/* when *}{* when ITEM_days *}      & {{ ITEM.days }}{/* when *}{* when ITEM_rate *}      & {/* when *} {{ ITEM.rate }}                           & {{ ITEM.subtotal }}                                     \\{/* map *}
+\end{tabularx}\endgroup{* unless EXPENSE_total_due *}
+
+\par\vspace{2ex}\noindent\hfill\underline{\makebox[\totalwidth]{\rule[-0.9ex]{0pt}{0pt}\bf\large Total\hfill\normalfont\large{{{ PAYMENT.currency }}{{ ITEM_total_due }}}}}{/* unless *}{/* when *}{* when EXPENSE_total_due *}
 
 \vspace{0.5 cm}
 
 \begingroup\renewcommand{\arraystretch}{1.5}\rowcolors{2}{white}{gray!15}
-\begin{tabularx}{\linewidth}{c X {* when EXPENSE_qty *}c {/* when *}{* when EXPENSE_rate *}c {/* when *}c}
-    \cen{\bf{EXPENSE}}    & \cen{\bf{DESCRIPTION}} {* when EXPENSE_qty *} & \cen{\bf{QTY}}{/* when *}{* when EXPENSE_rate *}         & \cen{\bf{RATE({{ PAYMENT.currency }})}}{/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})         \\[1ex]\hline{* map EXPENSE *}
-    \cen {{ EXPENSE.id }} & {{ EXPENSE.description }}    {* when EXPENSE_qty *} & \cen {{ EXPENSE.qty }}{/* when *}{* when EXPENSE_rate *} & {/* when *} \cen {{ EXPENSE.rate }}                & {{ EXPENSE.subtotal }}                        \\{/* map *}
-    \rowcolor{white}            & {* when EXPENSE_qty *}                            & {/* when *}{* when EXPENSE_rate *}                             & {/* when *} \bf \large{Total}                            & \large{{{ PAYMENT.currency }}{* add ITEM_total_due EXPENSE_total_due */}} \\[2.5ex]\hhline{~~~--}
-\end{tabularx}\endgroup{/* when *}
+\begin{tabularx}{\linewidth}{l X {* when EXPENSE_qty *}l {/* when *}{* when EXPENSE_rate *}l {/* when *}r}
+    \bf{EXPENSE}          & \bf{DESCRIPTION}       {* when EXPENSE_qty *} & \bf{QTY}{/* when *}{* when EXPENSE_rate *}               & \bf{RATE({{ PAYMENT.currency }})}{/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})         \\[1ex]\hline{* map EXPENSE *}
+    {{ EXPENSE.id }}      & {{ EXPENSE.description }}    {* when EXPENSE_qty *} & {{ EXPENSE.qty }}{/* when *}{* when EXPENSE_rate *}       & {/* when *} {{ EXPENSE.rate }}                & {{ EXPENSE.subtotal }}                        \\{/* map *}
+\end{tabularx}\endgroup
+
+\par\vspace{2ex}\noindent\hfill\underline{\makebox[\totalwidth]{\rule[-0.9ex]{0pt}{0pt}\bf\large Total\hfill\normalfont\large{{{ PAYMENT.currency }}{* add ITEM_total_due EXPENSE_total_due */}}}}{/* when *}
 
 \vspace{3 cm}
 
