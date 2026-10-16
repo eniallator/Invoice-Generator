@@ -104,7 +104,7 @@ describe("readTimeEntries", () => {
       "insert into TIMES (clientName, amountPerhour, date1, working) values ('Jane Roe', 'lots', '2000-03-01 10:00', 60)"
     );
     expect(() => readTimeEntries(db, 2000, 3)).toThrow(
-      "Expected a number in the database but found lots"
+      "Unexpected time data: expected numbers for the rate and the time worked"
     );
   });
 
@@ -117,6 +117,47 @@ describe("readTimeEntries", () => {
   ])("rejects the month %j-%j", (year, month) => {
     expect(() => readTimeEntries(createTimeDatabase(), year, month)).toThrow(
       "expected a year and a month from 1 to 12"
+    );
+  });
+});
+
+describe("missing values", () => {
+  it("reads a time with no client, project or notes as empty text", () => {
+    const db = createTimeDatabase();
+    db.exec(
+      "insert into TIMES (amountPerhour, date1, working) values (10, '2000-03-01 10:00', 60)"
+    );
+    expect(readTimeEntries(db, 2000, 3)).toEqual([
+      {
+        client: "",
+        project: "",
+        rate: 10,
+        start: "2000-03-01 10:00",
+        minutes: 60,
+        notes: "",
+      },
+    ]);
+  });
+
+  it("reads an expense with no client, category or notes as empty text", () => {
+    const db = createTimeDatabase();
+    db.exec("insert into CLIENT (client) values (null)");
+    db.exec(
+      "insert into EXPENSE (amount, expenseDate, clientId) values (5, '2000-03-05', 1)"
+    );
+    expect(readExpenses(db, 2000, 3)).toEqual([
+      { client: "", description: "", amount: 5 },
+    ]);
+  });
+
+  it("throws for an expense whose amount is not a number", () => {
+    const db = createTimeDatabase();
+    addClient(db, "Jane Roe");
+    db.exec(
+      "insert into EXPENSE (amount, expenseDate, clientId) values ('lots', '2000-03-05', 1)"
+    );
+    expect(() => readExpenses(db, 2000, 3)).toThrow(
+      "Unexpected expense data: expected a number for the amount"
     );
   });
 });

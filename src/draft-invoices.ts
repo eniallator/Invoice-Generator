@@ -5,7 +5,7 @@ import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { parseArgs } from "node:util";
-import { raise } from "niall-utils";
+import { formatLocaleDate, raise } from "niall-utils";
 
 import { loadEnv, requireEnv } from "./env.ts";
 import { DATABASES_DIR, latestDatabase } from "./timetracker/database-files.ts";
@@ -59,8 +59,11 @@ const results = createDrafts({
   clientsDir: "./clients",
   rawInvoicesDir: "./raw_invoices",
   numbersPath: INVOICE_NUMBERS_FILE,
-  // en-CA gives YYYY-MM-DD, in local time
-  today: new Date().toLocaleDateString("en-CA"),
+  // The date part of YYYY-MM-DDTHH:mm:ss, in local time
+  today: (
+    formatLocaleDate(new Date()) ??
+    raise(new Error("Could not work out today's date"))
+  ).slice(0, 10),
   thresholdMinutes: parseThresholdMinutes(
     requireEnv("ROUNDING_THRESHOLD_MINUTES")
   ),

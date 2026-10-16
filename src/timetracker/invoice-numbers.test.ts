@@ -48,7 +48,7 @@ describe("lastInvoiceId", () => {
       "raw/b.cfg": invoice("AB0120"),
       "raw/c.cfg": invoice("AB0099"),
     });
-    expect(lastInvoiceId(undefined, join(dir, "raw"))).toBe("AB0120");
+    expect(lastInvoiceId(null, join(dir, "raw"))).toBe("AB0120");
   });
 
   it("compares the numbers, not the text", () => {
@@ -56,7 +56,7 @@ describe("lastInvoiceId", () => {
       "raw/a.cfg": invoice("AB999"),
       "raw/b.cfg": invoice("AB1000"),
     });
-    expect(lastInvoiceId(undefined, join(dir, "raw"))).toBe("AB1000");
+    expect(lastInvoiceId(null, join(dir, "raw"))).toBe("AB1000");
   });
 
   it("ignores other files, other options and ids without a number", () => {
@@ -65,19 +65,19 @@ describe("lastInvoiceId", () => {
       "raw/b.cfg": invoice("draft"),
       "raw/notes.txt": invoice("AB0900"),
     });
-    expect(lastInvoiceId(undefined, join(dir, "raw"))).toBe("AB0030");
+    expect(lastInvoiceId(null, join(dir, "raw"))).toBe("AB0030");
   });
 
   it("finds ids in the middle of a file and with spaces around them", () => {
     const dir = createFiles({
       "raw/a.cfg": `[META]\nimport=./default\ninvoice_id=AB0007  \ninvoice_date=2000/01/01\n`,
     });
-    expect(lastInvoiceId(undefined, join(dir, "raw"))).toBe("AB0007");
+    expect(lastInvoiceId(null, join(dir, "raw"))).toBe("AB0007");
   });
 
   it("throws if there is no id anywhere", () => {
     const dir = createFiles({ "raw/a.cfg": "[META]\ninvoice_terms=7 days\n" });
-    expect(() => lastInvoiceId(undefined, join(dir, "raw"))).toThrow(
+    expect(() => lastInvoiceId(null, join(dir, "raw"))).toThrow(
       /No invoice ids found in .*raw to continue from, so say which one to use with --invoice-id/
     );
   });
@@ -92,7 +92,7 @@ describe("readInvoiceNumbers", () => {
   it("has used nothing if the file does not exist", () => {
     const dir = createFiles({ "other.txt": "" });
     expect(readInvoiceNumbers(join(dir, "numbers.json"))).toEqual({
-      last: undefined,
+      last: null,
       drafts: {},
     });
   });
@@ -114,16 +114,9 @@ describe("readInvoiceNumbers", () => {
     });
   });
 
-  it.each([
-    ["only the last id", { last: "AB0042" }, { last: "AB0042", drafts: {} }],
-    [
-      "only the drafts",
-      { drafts: { "a.cfg": "AB0001" } },
-      { last: undefined, drafts: { "a.cfg": "AB0001" } },
-    ],
-    ["nothing", {}, { last: undefined, drafts: {} }],
-  ])("reads a file with %s", (_, data, expected) => {
-    expect(read(JSON.stringify(data))()).toEqual(expected);
+  it("reads a last id that is null as nothing having been allocated", () => {
+    const stored = { last: null, drafts: { "a.cfg": "AB0001" } };
+    expect(read(JSON.stringify(stored))()).toEqual(stored);
   });
 
   it.each([
@@ -132,11 +125,14 @@ describe("readInvoiceNumbers", () => {
     ["null", "null"],
     ["a string", '"AB0042"'],
     ["an array", "[]"],
-    ["a last id that is not text", '{"last": 42}'],
-    ["drafts that are null", '{"drafts": null}'],
-    ["drafts that are an array", '{"drafts": ["AB0001"]}'],
-    ["drafts that are text", '{"drafts": "AB0001"}'],
-    ["a draft id that is not text", '{"drafts": {"a.cfg": 1}}'],
+    ["an empty object", "{}"],
+    ["missing the drafts", '{"last": "AB0042"}'],
+    ["missing the last id", '{"drafts": {}}'],
+    ["a last id that is not text", '{"last": 42, "drafts": {}}'],
+    ["drafts that are null", '{"last": null, "drafts": null}'],
+    ["drafts that are an array", '{"last": null, "drafts": ["AB0001"]}'],
+    ["drafts that are text", '{"last": null, "drafts": "AB0001"}'],
+    ["a draft id that is not text", '{"last": null, "drafts": {"a.cfg": 1}}'],
   ])("rejects a file that is %s", (_, contents) => {
     expect(read(contents)).toThrow(/numbers\.json is not valid, expected/);
   });
@@ -157,12 +153,12 @@ describe("writeInvoiceNumbers", () => {
     expect(readInvoiceNumbers(path)).toEqual(numbers);
   });
 
-  it("leaves out a last id that is not set", () => {
+  it("writes a last id that is not set as null", () => {
     const dir = createFiles({ "other.txt": "" });
     const path = join(dir, "numbers.json");
-    writeInvoiceNumbers(path, { last: undefined, drafts: {} });
-    expect(readText(path)).toBe(`{\n  "drafts": {}\n}\n`);
-    expect(readInvoiceNumbers(path)).toEqual({ last: undefined, drafts: {} });
+    writeInvoiceNumbers(path, { last: null, drafts: {} });
+    expect(readText(path)).toBe(`{\n  "last": null,\n  "drafts": {}\n}\n`);
+    expect(readInvoiceNumbers(path)).toEqual({ last: null, drafts: {} });
   });
 
   it("replaces what was there, and creates the file", () => {

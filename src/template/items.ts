@@ -1,3 +1,5 @@
+import { mapFilter, mapFind } from "niall-utils";
+
 import {
   formatFixed2,
   parseFloatOrNull,
@@ -12,16 +14,12 @@ const JOIN_SEPARATOR = ", ";
 const QUANTITY_KEYS = ["hrs", "days", "qty"];
 const PRICE_KEYS = ["rate", "price"];
 
-const firstPresent = (item: Item, keys: string[]): string | undefined =>
-  keys.map(key => item.get(key)).find(value => value !== undefined);
+const firstPresent = (item: Item, keys: string[]): string | null =>
+  mapFind(keys, key => item.get(key));
 
 const computeSubtotal = (item: Item): string | undefined => {
-  const quantity = parseFloatOrNull(
-    firstPresent(item, ["hrs", "days", "qty"]) ?? ""
-  );
-  const unitPrice = parseFloatOrNull(
-    firstPresent(item, ["rate", "price"]) ?? ""
-  );
+  const quantity = parseFloatOrNull(firstPresent(item, QUANTITY_KEYS) ?? "");
+  const unitPrice = parseFloatOrNull(firstPresent(item, PRICE_KEYS) ?? "");
   return quantity === null || unitPrice === null
     ? undefined
     : formatFixed2(quantity * unitPrice);
@@ -70,7 +68,7 @@ export const mergeItems = (items: readonly Item[]): Item => {
 };
 
 export const sumOption = (items: readonly Item[], key: string): number =>
-  items.reduce((sum, item) => {
-    const value = item.get(key);
-    return value === undefined ? sum : sum + parseFloatStrict(value);
-  }, 0);
+  mapFilter(items, item => item.get(key)).reduce(
+    (sum, value) => sum + parseFloatStrict(value),
+    0
+  );

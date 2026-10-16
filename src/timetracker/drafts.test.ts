@@ -176,7 +176,7 @@ describe("createDrafts", () => {
 
     it("continues from the last id that was allocated, if there is one", () => {
       const { run, numbers } = setup(
-        { [NUMBERS]: JSON.stringify({ last: "AB0100" }) },
+        { [NUMBERS]: JSON.stringify({ last: "AB0100", drafts: {} }) },
         { entries: JANE_MARCH }
       );
       expect(run()).toMatchObject([{ invoiceId: "AB0101" }]);
@@ -328,7 +328,7 @@ describe("createDrafts", () => {
 
     it("does not change the last id that the next one continues from", () => {
       const { run, numbers } = setup(
-        { [NUMBERS]: JSON.stringify({ last: "AB0100" }) },
+        { [NUMBERS]: JSON.stringify({ last: "AB0100", drafts: {} }) },
         { entries: JANE_MARCH }
       );
       run({ invoiceId: "AB0099" });
@@ -339,7 +339,7 @@ describe("createDrafts", () => {
       const { run, numbers } = setup({}, { entries: JANE_MARCH });
       run({ invoiceId: "AB0099" });
       expect(numbers()).toEqual({
-        last: undefined,
+        last: null,
         drafts: { [JANE_DRAFT]: "AB0099" },
       });
     });
@@ -374,7 +374,7 @@ describe("createDrafts", () => {
       );
       expect(hasDraft(JANE_DRAFT)).toBe(false);
       expect(hasDraft(SAM_DRAFT)).toBe(false);
-      expect(numbers()).toEqual({ last: undefined, drafts: {} });
+      expect(numbers()).toEqual({ last: null, drafts: {} });
     });
 
     it("counts clients that would be skipped", () => {
@@ -410,7 +410,7 @@ describe("createDrafts", () => {
         { entries: JANE_MARCH }
       );
       expect(run({ invoiceId: "AB0099" })).toMatchObject([{ kind: "skipped" }]);
-      expect(numbers()).toEqual({ last: undefined, drafts: {} });
+      expect(numbers()).toEqual({ last: null, drafts: {} });
     });
   });
 
@@ -437,7 +437,7 @@ describe("createDrafts", () => {
     it("drafts nothing if the client has nothing to bill", () => {
       const { run, numbers } = setup({}, { entries: both });
       expect(run({ client: "Nobody" })).toEqual([]);
-      expect(numbers()).toEqual({ last: undefined, drafts: {} });
+      expect(numbers()).toEqual({ last: null, drafts: {} });
     });
   });
 
@@ -513,7 +513,7 @@ describe("createDrafts", () => {
           ) as string,
         },
       ]);
-      expect(numbers()).toEqual({ last: undefined, drafts: {} });
+      expect(numbers()).toEqual({ last: null, drafts: {} });
     });
 
     it("throws for a client config that cannot be read", () => {
@@ -625,7 +625,7 @@ describe("createDrafts", () => {
           reason: "there is nothing to bill",
         },
       ]);
-      expect(numbers()).toEqual({ last: undefined, drafts: {} });
+      expect(numbers()).toEqual({ last: null, drafts: {} });
     });
 
     it("does nothing without any entries or expenses", () => {

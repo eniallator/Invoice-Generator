@@ -1,4 +1,4 @@
-import { raise } from "niall-utils";
+import { generator, raise } from "niall-utils";
 
 import type { ContextVariables, Extra } from "./context-variables.ts";
 import { DIRECTIVES, isDirectiveName } from "./directives.ts";
@@ -94,11 +94,7 @@ export class DynamicContentParser {
 
   parseString(contents: string): string {
     let current = contents;
-    for (
-      let match = DIRECTIVE_RE.exec(current);
-      match !== null;
-      match = DIRECTIVE_RE.exec(current)
-    ) {
+    for (const match of generator(() => DIRECTIVE_RE.exec(current))) {
       const [replacement, end] = this.insertDirective(match, current);
       current =
         current.slice(0, match.index) + replacement + current.slice(end);

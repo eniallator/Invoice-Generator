@@ -13,11 +13,17 @@ export const writeText = (filePath: string, contents: string): void => {
 };
 
 export const isFile = (filePath: string): boolean =>
-  attempt(() => statSync(filePath).isFile()) ?? false;
+  attempt(
+    () => statSync(filePath).isFile(),
+    () => false
+  );
 
 export const realpath = (filePath: string): string => {
   const absolute = resolve(filePath);
-  return attempt(() => realpathSync(absolute)) ?? absolute;
+  return attempt(
+    () => realpathSync(absolute),
+    () => absolute
+  );
 };
 
 export const parseItemPath = (itemPath: string, basePath: string): string => {

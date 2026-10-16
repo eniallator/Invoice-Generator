@@ -1,4 +1,4 @@
-import { raise } from "niall-utils";
+import { memoize, raise } from "niall-utils";
 
 import type { Config } from "../config/config.ts";
 import { loadConfig, META } from "../config/imports.ts";
@@ -38,7 +38,6 @@ const groupValues = (
  */
 export class ContextVariables {
   private readonly config: Config;
-  private readonly groups = new Map<string, Group>();
 
   constructor(basePath: string) {
     this.config = loadConfig(basePath);
@@ -87,10 +86,7 @@ export class ContextVariables {
     return undefined;
   }
 
-  private group(prefix: string): Group {
-    const cached = this.groups.get(prefix);
-    if (cached !== undefined) return cached;
-
+  private readonly group = memoize((prefix: string): Group => {
     const sectionPrefix = `${prefix}_`;
     const entries = this.config
       .sectionNames()
@@ -101,14 +97,12 @@ export class ContextVariables {
         id: section.slice(sectionPrefix.length),
       }));
     const items = entries.map(({ raw, id }) => normaliseItem(raw, id));
-    const group = {
+    return {
       items,
       values: groupValues(
         entries.map(({ raw }) => raw),
         items
       ),
     };
-    this.groups.set(prefix, group);
-    return group;
-  }
+  });
 }

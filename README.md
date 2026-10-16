@@ -2,6 +2,30 @@
 
 Welcome to my invoice generator! It contains a custom templating language for inserting context variables/directives.
 
+## Typical Flow
+
+At its simplest, you write a raw invoice (copy the [example invoice config](./raw_invoices/johnDoe.2000.01.01.cfg) and change it), generate it and send the pdf it makes:
+
+```properties
+pnpm generate ./raw_invoices/janeRoe.2000.04.03.cfg
+```
+
+If you track your time with the Time Tracker app and use Gmail, the optional [time tracker](#time-tracker-optional) and [emailing](#emailing-invoices-optional) steps can do the rest of the work for a month's invoices, so the flow becomes:
+
+```properties
+pnpm fetch-db
+pnpm draft-invoices 2000 3
+pnpm generate ./raw_invoices/janeRoe.2000.04.03.cfg
+pnpm email-invoices ./raw_invoices/janeRoe.2000.04.03.cfg
+```
+
+1. `pnpm fetch-db` copies the newest database backup from Google Drive into `timetracker_databases/`.
+2. `pnpm draft-invoices 2000 3` writes a draft raw invoice for every client with time in March 2000, with an item for each day worked, and the next invoice id. Look over each draft and edit it, for example to add expenses or extra items that are not in the app.
+3. `pnpm generate <cfg>` fills out the template from the raw invoice and builds the pdf, once for each invoice.
+4. `pnpm email-invoices <cfg>` creates a Gmail draft for the invoice with the pdf attached. Look over the draft in Gmail, and send it from there.
+
+Each of these steps works on its own, so you can start or stop anywhere in the flow.
+
 ## Command Usage
 
 To generate the example invoice, use the following command:
@@ -415,3 +439,57 @@ The threshold is `ROUNDING_THRESHOLD_MINUTES` unless a client's `META` section h
 The ids that have been used are kept in `.invoice-numbers.json` (gitignored). A new draft continues from the last id that was allocated, or from the highest `invoice_id` in `raw_invoices/` if there is no such file yet. The id is recorded against the draft's file name, so writing the same draft again (say after deleting it to start again) reuses its id instead of using up another number.
 
 `--invoice-id <id>` uses a specific id for a draft instead, without changing the last id that new drafts continue from. This is for one invoice, so if several clients have time that month, say which with `--client`.
+
+## Emailing Invoices (optional)
+
+Once an invoice's pdf has been generated, `pnpm email-invoices` can create a Gmail draft for it with the pdf attached, ready for you to look over and send. It only ever creates drafts, it is not able to read or send any email. This is also optional, and nothing else needs it.
+
+```properties
+pnpm generate ./raw_invoices/janeRoe.2000.04.03.cfg
+pnpm email-invoices ./raw_invoices/janeRoe.2000.04.03.cfg
+```
+
+Each invoice is emailed to the `email` option in its `[INVOICE_TO]` section (several addresses can be separated with commas), or to `--to <addresses>` if that is given. The other option is `--template`/`-t`, for the email template to use (the default is [email_template.txt](./email_template.txt)).
+
+The email template uses the same context variables and directives as the other templates, and its first line is the subject. For example, with the following config:
+
+```properties
+[META]
+
+invoice_id=AB0042
+invoice_date=2000/04/03
+invoice_terms=7 days
+
+[INVOICE_TO]
+
+fullname=Jane Roe
+email=jane@example.com
+
+[INVOICE_FROM]
+
+fullname=John Doe
+```
+
+the default template makes an email to `jane@example.com` with the subject `Invoice AB0042` and the following body:
+
+```text
+Hi Jane Roe,
+
+Please find attached invoice AB0042, dated 2000/04/03. Payment details are on the invoice, and the terms are 7 days.
+
+Let me know if you have any questions.
+
+Thanks,
+John Doe
+```
+
+### Setting up Gmail
+
+This needs a Google Cloud project (it is free) that lets this create drafts in your Gmail:
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a project and enable the Gmail API for it.
+2. Set up the OAuth consent screen, and add your own Google account as a test user. Test mode makes the access it is given expire after 7 days, so to avoid having to approve it again every week, publish the app (it stays private to you, and only shows an "unverified app" warning when you approve it).
+3. Create an OAuth client ID with the "Desktop app" type, and download its JSON file as `.gmail-credentials.json` in this folder.
+4. Set `GMAIL_CREDENTIALS_FILE` (and optionally `GMAIL_TOKEN_FILE`) in `.env`, as in [.env.example](./.env.example).
+
+The first time you run `pnpm email-invoices` it prints a link to open in your browser, where you approve it creating drafts, and it then keeps the token that gives in `.gmail-token.json`. Both of these files are gitignored.

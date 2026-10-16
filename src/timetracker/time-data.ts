@@ -1,4 +1,12 @@
-import type { DatabaseSync, SQLOutputValue } from "node:sqlite";
+import type { DatabaseSync } from "node:sqlite";
+import {
+  guardOrThrow,
+  isInteger,
+  isNullable,
+  isNumber,
+  isObjectOf,
+  isString,
+} from "deep-guards";
 import { raise } from "niall-utils";
 
 export interface TimeEntry {
@@ -18,16 +26,27 @@ export interface Expense {
   amount: number;
 }
 
+const isTimeRow = isObjectOf({
+  clientName: isNullable(isString),
+  projectName: isNullable(isString),
+  amountPerhour: isNumber,
+  date1: isString,
+  working: isNumber,
+  notes: isNullable(isString),
+});
+
+const isExpenseRow = isObjectOf({
+  clientName: isNullable(isString),
+  categoryName: isNullable(isString),
+  notes: isNullable(isString),
+  amount: isNumber,
+});
+
 const pad2 = (value: number): string => String(value).padStart(2, "0");
 
 /** The dates the month starts and the next month starts, as the app stores them */
 const monthRange = (year: number, month: number): [string, string] => {
-  if (
-    !Number.isInteger(year) ||
-    !Number.isInteger(month) ||
-    month < 1 ||
-    month > 12
-  ) {
+  if (!isInteger(year) || !isInteger(month) || month < 1 || month > 12) {
     raise(
       new Error(
         `Invalid month '${year}-${month}': expected a year and a month from 1 to 12`
@@ -39,18 +58,6 @@ const monthRange = (year: number, month: number): [string, string] => {
     month === 12 ? `${year + 1}-01-01` : `${year}-${pad2(month + 1)}-01`,
   ];
 };
-
-const text = (value: SQLOutputValue | undefined): string =>
-  typeof value === "string" ? value : "";
-
-const num = (value: SQLOutputValue | undefined): number =>
-  typeof value === "number"
-    ? value
-    : raise(
-        new Error(
-          `Expected a number in the database but found ${String(value)}`
-        )
-      );
 
 /** The billable time worked in the month, oldest first */
 export const readTimeEntries = (
@@ -67,14 +74,21 @@ export const readTimeEntries = (
        order by date1`
     )
     .all(from, to)
-    .map(row => ({
-      client: text(row["clientName"]),
-      project: text(row["projectName"]),
-      rate: num(row["amountPerhour"]),
-      start: text(row["date1"]),
-      minutes: num(row["working"]),
-      notes: text(row["notes"]),
-    }));
+    .map(row => {
+      const time = guardOrThrow(
+        row,
+        isTimeRow,
+        "Unexpected time data: expected numbers for the rate and the time worked"
+      );
+      return {
+        client: time.clientName ?? "",
+        project: time.projectName ?? "",
+        rate: time.amountPerhour,
+        start: time.date1,
+        minutes: time.working,
+        notes: time.notes ?? "",
+      };
+    });
 };
 
 /** The billable expenses in the month, oldest first */
@@ -92,11 +106,18 @@ export const readExpenses = (
        order by EXPENSE.expenseDate, EXPENSE.rowid`
     )
     .all(from, to)
-    .map(row => ({
-      client: text(row["clientName"]),
-      description: [text(row["categoryName"]), text(row["notes"])]
-        .filter(part => part !== "")
-        .join(" - "),
-      amount: num(row["amount"]),
-    }));
+    .map(row => {
+      const expense = guardOrThrow(
+        row,
+        isExpenseRow,
+        "Unexpected expense data: expected a number for the amount"
+      );
+      return {
+        client: expense.clientName ?? "",
+        description: [expense.categoryName ?? "", expense.notes ?? ""]
+          .filter(part => part !== "")
+          .join(" - "),
+        amount: expense.amount,
+      };
+    });
 };

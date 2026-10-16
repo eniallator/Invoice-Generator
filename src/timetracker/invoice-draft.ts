@@ -1,3 +1,5 @@
+import { zip } from "niall-utils";
+
 import { formatFixed2 } from "../numbers.ts";
 import { roundHours } from "./rounding.ts";
 import type { TimeEntry } from "./time-data.ts";
@@ -81,12 +83,9 @@ export const buildItems = (
     all.map(unit => unit.minutes),
     thresholdMinutes
   );
-  const billed = all.flatMap((unit, index) => {
-    const unitHours = hours[index];
-    return unitHours !== undefined && unitHours > 0
-      ? [{ unit, hours: unitHours }]
-      : [];
-  });
+  const billed = zip(all, hours).flatMap(([unit, unitHours]) =>
+    unitHours > 0 ? [{ unit, hours: unitHours }] : []
+  );
 
   const perDay = new Map<string, number>();
   for (const { unit } of billed) {

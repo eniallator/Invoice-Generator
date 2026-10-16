@@ -15,6 +15,7 @@ export default defineConfig({
         "src/generate.ts",
         "src/fetch-db.ts",
         "src/draft-invoices.ts",
+        "src/email-invoices.ts",
         "src/test-helpers.ts",
         "src/**/*.test.ts",
       ],

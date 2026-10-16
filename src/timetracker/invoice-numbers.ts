@@ -1,5 +1,6 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
+import { isNullable, isObjectOf, isRecordOf, isString } from "deep-guards";
 import { attempt, raise } from "niall-utils";
 
 import { isFile, readText, writeText } from "../io.ts";
@@ -9,7 +10,7 @@ export const INVOICE_NUMBERS_FILE = "./.invoice-numbers.json";
 
 export interface InvoiceNumbers {
   /** The last new invoice id that was allocated, which the next one continues from */
-  last: string | undefined;
+  last: string | null;
   /** The invoice id each draft raw invoice (by file name) was given */
   drafts: Record<string, string>;
 }
@@ -56,7 +57,7 @@ const highestInvoiceId = (rawInvoicesDir: string): string | undefined =>
  * highest one in the raw invoices if none has been allocated yet.
  */
 export const lastInvoiceId = (
-  last: string | undefined,
+  last: string | null,
   rawInvoicesDir: string
 ): string =>
   last ??
@@ -67,27 +68,15 @@ export const lastInvoiceId = (
     )
   );
 
-const isStoredNumbers = (
-  data: unknown
-): data is { last?: string; drafts?: Record<string, string> } => {
-  if (typeof data !== "object" || data === null || Array.isArray(data)) {
-    return false;
-  }
-  const last: unknown = Reflect.get(data, "last");
-  const drafts: unknown = Reflect.get(data, "drafts");
-  return (
-    (last === undefined || typeof last === "string") &&
-    (drafts === undefined ||
-      (typeof drafts === "object" &&
-        drafts !== null &&
-        !Array.isArray(drafts) &&
-        Object.values(drafts).every(id => typeof id === "string")))
-  );
-};
+// `last` is null until an id has been allocated
+const isStoredNumbers = isObjectOf({
+  last: isNullable(isString),
+  drafts: isRecordOf(isString, isString),
+});
 
 /** Nothing has been used if the file does not exist yet */
 export const readInvoiceNumbers = (path: string): InvoiceNumbers => {
-  if (!isFile(path)) return { last: undefined, drafts: {} };
+  if (!isFile(path)) return { last: null, drafts: {} };
   const data: unknown = attempt(() => JSON.parse(readText(path)) as unknown);
   if (!isStoredNumbers(data)) {
     raise(
@@ -96,7 +85,7 @@ export const readInvoiceNumbers = (path: string): InvoiceNumbers => {
       )
     );
   }
-  return { last: data.last, drafts: data.drafts ?? {} };
+  return { last: data.last ?? null, drafts: data.drafts };
 };
 
 export const writeInvoiceNumbers = (

@@ -1,0 +1,10 @@
+Subject: Invoice {{ invoice_id }}
+
+Hi {{ INVOICE_TO.fullname }},
+
+Please find attached invoice {{ invoice_id }}, dated {{ invoice_date }}. Payment details are on the invoice, and the terms are {{ invoice_terms }}.
+
+Let me know if you have any questions.
+
+Thanks,
+{{ INVOICE_FROM.fullname }}

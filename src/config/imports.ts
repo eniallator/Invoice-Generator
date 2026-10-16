@@ -1,5 +1,5 @@
 import { dirname } from "node:path";
-import { raise } from "niall-utils";
+import { generator, raise } from "niall-utils";
 
 import { parseItemPath, realpath } from "../io.ts";
 import { Config } from "./config.ts";
@@ -22,11 +22,7 @@ export const loadConfig = (basePath: string): Config => {
   const erroredImports = new Set<string>();
   let baseConfig: Config | undefined;
 
-  for (
-    let importPath = importStack.pop();
-    importPath !== undefined;
-    importPath = importStack.pop()
-  ) {
+  for (const importPath of generator(() => importStack.pop())) {
     const imported = Config.read(importPath);
     if (imported === undefined) {
       erroredImports.add(importPath);

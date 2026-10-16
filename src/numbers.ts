@@ -1,4 +1,5 @@
-import { raise } from "niall-utils";
+import { isInteger } from "deep-guards";
+import { positiveMod, raise } from "niall-utils";
 
 const FLOAT_RE = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
 
@@ -15,9 +16,9 @@ export const parseFloatStrict = (value: string): number =>
 // than away from zero
 export const formatFixed2 = (value: number): string => {
   const eighths = value * 8;
-  if (Number.isInteger(eighths) && Math.abs(eighths % 2) === 1) {
+  if (isInteger(eighths) && positiveMod(eighths, 2) === 1) {
     const lower = Math.floor(value * 100);
-    return ((lower % 2 === 0 ? lower : lower + 1) / 100).toFixed(2);
+    return ((lower + positiveMod(lower, 2)) / 100).toFixed(2);
   }
   return value.toFixed(2);
 };

@@ -2,10 +2,12 @@
 // config loader, context variables and template parser.
 import { rmSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { parseCli } from "./cli.ts";
 import { loadConfig } from "./config/imports.ts";
+import { parseEmail, parseRecipients } from "./email/message.ts";
 import { readText } from "./io.ts";
 import { contextFrom, createFiles, lines, render } from "./test-helpers.ts";
 import { createDrafts } from "./timetracker/drafts.ts";
@@ -484,6 +486,58 @@ describe("README: Time Tracker (optional)", () => {
     rmSync(path);
     expect(draft()).toMatchObject([
       { kind: "created", invoiceId: "AB0042", idSource: "recorded" },
+    ]);
+  });
+});
+
+describe("README: Emailing Invoices (optional)", () => {
+  const cfg = lines(
+    "[META]",
+    "",
+    "invoice_id=AB0042",
+    "invoice_date=2000/04/03",
+    "invoice_terms=7 days",
+    "",
+    "[INVOICE_TO]",
+    "",
+    "fullname=Jane Roe",
+    "email=jane@example.com",
+    "",
+    "[INVOICE_FROM]",
+    "",
+    "fullname=John Doe"
+  );
+  const template = readText(
+    join(fileURLToPath(new URL("../", import.meta.url)), "email_template.txt")
+  );
+
+  it("makes the subject and body from the default email template", () => {
+    expect(parseEmail(render(template, cfg))).toEqual({
+      subject: "Invoice AB0042",
+      body: lines(
+        "Hi Jane Roe,",
+        "",
+        "Please find attached invoice AB0042, dated 2000/04/03. Payment details are on the invoice, and the terms are 7 days.",
+        "",
+        "Let me know if you have any questions.",
+        "",
+        "Thanks,",
+        "John Doe",
+        ""
+      ),
+    });
+  });
+
+  it("emails the invoice to the email in INVOICE_TO", () => {
+    expect(
+      parseRecipients(contextFrom(cfg).getVariable("INVOICE_TO.email"))
+    ).toEqual(["jane@example.com"]);
+  });
+
+  it("can email several addresses", () => {
+    expect(parseRecipients("a@example.com, b@example.com")).toEqual([
+      "a@example.com",
+      "b@example.com",
     ]);
   });
 });
