@@ -85,12 +85,17 @@ describe("invoice_template.tex", () => {
     });
 
     it("shows each item's formatted rate and subtotal", () => {
-      expect(result).toMatch(/5\s*&\s*6\.00\s*&\s*30\.00/);
-      expect(result).toMatch(/2\s*&\s*3\.00\s*&\s*6\.00/);
+      expect(result).toMatch(/5\s*&\s*\\pounds6\.00\s*&\s*\\pounds30\.00/);
+      expect(result).toMatch(/2\s*&\s*\\pounds3\.00\s*&\s*\\pounds6\.00/);
     });
 
-    it("left aligns every column but the subtotal, which is right aligned", () => {
-      expect(result).toContain("{l X X X r}");
+    it("puts the currency on each subtotal, not in the heading", () => {
+      expect(result).toContain("\\bf SUB TOTAL ");
+      expect(result).not.toContain("SUB TOTAL(");
+    });
+
+    it("left aligns the text columns and right aligns the numeric columns", () => {
+      expect(result).toContain("{l X r r r}");
     });
 
     it("totals the items in the item table", () => {
@@ -138,7 +143,7 @@ describe("invoice_template.tex", () => {
 
     it("leaves out the columns that no expense uses", () => {
       expect(result).not.toContain("\\bf{QTY}");
-      expect(result).not.toContain("\\bf{RATE(\\pounds)}");
+      expect(result).not.toContain("\\bf{RATE}");
     });
   });
 
@@ -156,7 +161,7 @@ describe("invoice_template.tex", () => {
     it("shows the hours and rate columns when items use them", () => {
       const result = invoice("[ITEM_1]", "hrs=5", "rate=6");
       expect(result).toContain("\\bf{HRS}");
-      expect(result).toContain("\\bf{RATE(\\pounds/HR)}");
+      expect(result).toContain("\\bf{RATE/HR}");
       expect(result).not.toContain("\\bf{DAYS}");
     });
 
@@ -184,7 +189,8 @@ describe("invoice_template.tex", () => {
     it("shows the quantity and rate columns for expenses that use them", () => {
       const result = invoice("[EXPENSE_1]", "qty=2", "price=10", "rate=10");
       expect(result).toContain("\\bf{QTY}");
-      expect(result).toContain("\\bf{RATE(\\pounds)}");
+      expect(result).toContain("\\bf{RATE}");
+      expect(result).toMatch(/2\s*&\s*\\pounds10\.00\s*&\s*\\pounds20\.00/);
     });
   });
 
@@ -230,7 +236,7 @@ describe("quote_template.tex", () => {
       expect(result).toContain("\\pounds6.00");
     });
 
-    it("left aligns every column but the subtotal, which is right aligned", () => {
+    it("left aligns the text columns and right aligns the subtotal", () => {
       expect(result).toContain("{l X r}");
     });
 

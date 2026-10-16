@@ -55,9 +55,9 @@
 \vspace{2 cm}{* when ITEM_total_due *}
 
 \begingroup\renewcommand{\arraystretch}{1.5}\rowcolors{2}{white}{gray!15}
-\begin{tabularx}{\linewidth}{l X {* when ITEM_hrs *}X {/* when *}{* when ITEM_days *}X {/* when *}{* when ITEM_rate *}X {/* when *}r}
-    \bf{ITEM}                     & \bf{DESCRIPTION}            {* when ITEM_hrs *} & \bf{HRS}{/* when *}{* when ITEM_days *}            & \bf{DAYS}{/* when *}{* when ITEM_rate *}            & \bf{RATE({{ PAYMENT.currency }}/HR)} {/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})                   \\[1ex]\hline{* map ITEM *}
-    {{ ITEM.id }}                 & {{ ITEM.description }}      {* when ITEM_hrs *} & {{ ITEM.hrs }}{/* when *}{* when ITEM_days *}      & {{ ITEM.days }}{/* when *}{* when ITEM_rate *}      & {/* when *} {{ ITEM.rate }}                           & {{ ITEM.subtotal }}                                     \\{/* map *}
+\begin{tabularx}{\linewidth}{l X {* when ITEM_hrs *}r {/* when *}{* when ITEM_days *}r {/* when *}{* when ITEM_rate *}r {/* when *}r}
+    \bf{ITEM}                     & \bf{DESCRIPTION}            {* when ITEM_hrs *} & \bf{HRS}{/* when *}{* when ITEM_days *}            & \bf{DAYS}{/* when *}{* when ITEM_rate *}            & \bf{RATE/HR} {/* when *} & \bf SUB TOTAL                                         \\[1ex]\hline{* map ITEM *}
+    {{ ITEM.id }}                 & {{ ITEM.description }}      {* when ITEM_hrs *} & {{ ITEM.hrs }}{/* when *}{* when ITEM_days *}      & {{ ITEM.days }}{/* when *}{* when ITEM_rate *}      & {/* when *} {{ PAYMENT.currency }}{{ ITEM.rate }}                           & {{ PAYMENT.currency }}{{ ITEM.subtotal }}             \\{/* map *}
 \end{tabularx}\endgroup{* unless EXPENSE_total_due *}
 
 \par\vspace{2ex}\noindent\hfill\underline{\makebox[\totalwidth]{\rule[-0.9ex]{0pt}{0pt}\bf\large Total\hfill\normalfont\large{{{ PAYMENT.currency }}{{ ITEM_total_due }}}}}{/* unless *}{/* when *}{* when EXPENSE_total_due *}
@@ -65,9 +65,9 @@
 \vspace{0.5 cm}
 
 \begingroup\renewcommand{\arraystretch}{1.5}\rowcolors{2}{white}{gray!15}
-\begin{tabularx}{\linewidth}{l X {* when EXPENSE_qty *}l {/* when *}{* when EXPENSE_rate *}l {/* when *}r}
-    \bf{EXPENSE}          & \bf{DESCRIPTION}       {* when EXPENSE_qty *} & \bf{QTY}{/* when *}{* when EXPENSE_rate *}               & \bf{RATE({{ PAYMENT.currency }})}{/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})         \\[1ex]\hline{* map EXPENSE *}
-    {{ EXPENSE.id }}      & {{ EXPENSE.description }}    {* when EXPENSE_qty *} & {{ EXPENSE.qty }}{/* when *}{* when EXPENSE_rate *}       & {/* when *} {{ EXPENSE.rate }}                & {{ EXPENSE.subtotal }}                        \\{/* map *}
+\begin{tabularx}{\linewidth}{l X {* when EXPENSE_qty *}r {/* when *}{* when EXPENSE_rate *}r {/* when *}r}
+    \bf{EXPENSE}          & \bf{DESCRIPTION}       {* when EXPENSE_qty *} & \bf{QTY}{/* when *}{* when EXPENSE_rate *}               & \bf{RATE}{/* when *} & \bf SUB TOTAL                                 \\[1ex]\hline{* map EXPENSE *}
+    {{ EXPENSE.id }}      & {{ EXPENSE.description }}    {* when EXPENSE_qty *} & {{ EXPENSE.qty }}{/* when *}{* when EXPENSE_rate *}       & {/* when *} {{ PAYMENT.currency }}{{ EXPENSE.rate }}                & {{ PAYMENT.currency }}{{ EXPENSE.subtotal }} \\{/* map *}
 \end{tabularx}\endgroup
 
 \par\vspace{2ex}\noindent\hfill\underline{\makebox[\totalwidth]{\rule[-0.9ex]{0pt}{0pt}\bf\large Total\hfill\normalfont\large{{{ PAYMENT.currency }}{* add ITEM_total_due EXPENSE_total_due */}}}}{/* when *}
