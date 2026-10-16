@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "erasableSyntaxOnly": true,
+    "lib": ["esnext"],
+    "rootDir": "src",
+    "types": ["node"]
+  },
+  "extends": "./tsconfig.common.json",
+  "include": ["src"]
+}

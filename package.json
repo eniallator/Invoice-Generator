@@ -1,0 +1,44 @@
+{
+  "author": "eniallator",
+  "description": "Invoice/quote generator with a custom templating language",
+  "engines": {
+    "node": ">=25.4.0"
+  },
+  "license": "MIT",
+  "name": "invoice-generator",
+  "packageManager": "pnpm@12.6.0+sha512.3ef68f951cb111ac204b4a5a16f0b2ddf0da56a96e0413e81d855d9f0b55ef926714709028e1cd00c405c2c5fb7b9e8ec4dc46777c805d0373c2f2ff00fd20ec",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "claudeLibDocs": [
+    "deep-guards",
+    "method-monitor",
+    "niall-utils"
+  ],
+  "dependencies": {
+    "deep-guards": "^1.4.0",
+    "method-monitor": "^1.0.0",
+    "niall-utils": "^4.0.0"
+  },
+  "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
+    "@types/node": "^26.6.5",
+    "@vitest/coverage-v8": "^5.0.4",
+    "oxlint": "^1.87.0",
+    "oxlint-tsgolint": "^7.0.2003",
+    "prettier": "^3.9.9",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  },
+  "scripts": {
+    "generate": "node src/generate.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint ./src",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "findissues": "pnpm typecheck && pnpm lint && pnpm format:check",
+    "lib-docs": "node scripts/lib-docs.mjs",
+    "postinstall": "pnpm lib-docs",
+    "test": "vitest run --config vitest.config.js --coverage"
+  }
+}

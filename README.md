@@ -7,19 +7,22 @@ Welcome to my invoice generator! It contains a custom templating language for in
 To generate the example invoice, use the following command:
 
 ```properties
-python generate.py -c ./raw_invoices/johnDoe.2000.01.01.cfg
+pnpm install
+pnpm generate ./raw_invoices/johnDoe.2000.01.01.cfg
 ```
+
+This needs Node.js 25.4 or newer, as well as `latexmk` to build the pdf.
 
 The following arguments exist:
 
-- `--cfg`/`-c`
+- `cfg` (positional)
   - The config file entry point to get all the context variables from
 - `--template`/`-t`
   - The template file to use (can in reality be any extension/file type, but this uses LaTeX). This defaults to `./invoice_template.tex`
 - `--out-path`/`-o`
-  - The output destination for all the auxiliary files as well as the output pdf that `latexmk` creates. This defaults to `./out/invoice.tex`
+  - The output destination for all the auxiliary files as well as the output pdf that `latexmk` creates. This defaults to `SAME`, which names it after the config file (e.g. `./out/johnDoe.2000.01.01.tex`)
 - `--quote`/`-q`
-  - Alias for setting the default template to `./quote_template.tex` and the default out path to `./out/quote.tex`. So if they are provided, the given parameter(s) override this option.
+  - Alias for setting the default template to `./quote_template.tex`. So if the template is provided, the given parameter overrides this option.
 
 ## How It Works
 
@@ -51,7 +54,7 @@ Invoice items are sections which have the `ITEM_` prefix, where what follows is 
 
 One implicit calculation that takes place is with the `recurring` options. If there are any instances of `recurring` inside the ITEM(s), then there will be a `total_recurring_due` option added to the `META` section.
 
-To take advantage of the subtotal/total calculations, each item must have the following options: `rate`, and `hrs`. These are then used to work out a `subtotal` option. These subtotals are also added up into a `total_due` option in the `META` section. For example:
+To take advantage of the subtotal/total calculations, each item must have the following options: `rate`, and `hrs`. These are then used to work out a `subtotal` option. These subtotals are also added up into a `total_due` option in the `META` section. Prices (`rate` and `price`) are always formatted to 2 decimal places, whereas quantities (`hrs`, `days` and `qty`) are only reformatted if they are written with a decimal point. For example:
 
 ```properties
 [ITEM_1]
@@ -79,7 +82,7 @@ total_recurring_due=11.00
 
 id=1
 subtotal=30.00
-hrs=5.00
+hrs=5
 rate=6.00
 recurring=7.00
 
@@ -87,7 +90,7 @@ recurring=7.00
 
 id=2
 subtotal=6.00
-hrs=2.00
+hrs=2
 rate=3.00
 recurring=4.00
 ```

@@ -1,0 +1,13 @@
+{
+  "arrowParens": "avoid",
+  "endOfLine": "auto",
+  "printWidth": 80,
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "es5",
+  "tabWidth": 2,
+  "plugins": ["@ianvs/prettier-plugin-sort-imports"],
+  "importOrder": ["<BUILTIN_MODULES>", "<THIRD_PARTY_MODULES>", "", "^[.]"],
+  "importOrderTypeScriptVersion": "7.0.0",
+  "importOrderCaseSensitive": false
+}

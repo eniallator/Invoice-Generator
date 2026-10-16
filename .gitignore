@@ -8,3 +8,7 @@ rendered_invoice.tex
 .vscode
 .tmp.driveupload
 .tmp.drivedownload
+node_modules
+coverage
+dist
+.claude/lib-docs

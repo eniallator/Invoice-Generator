@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(.claude/lib-docs/**)",
+      "Bash(cat .claude/lib-docs/*)",
+      "Bash(head * .claude/lib-docs/*)",
+      "Bash(tail * .claude/lib-docs/*)",
+      "Bash(grep * .claude/lib-docs/*)",
+      "Bash(wc * .claude/lib-docs/*)",
+      "Bash(ls .claude/lib-docs*)"
+    ]
+  }
+}
