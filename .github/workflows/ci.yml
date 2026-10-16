@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch or pull request makes the older run pointless
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      # The pnpm version comes from the packageManager field in package.json
+      - uses: pnpm/action-setup@v4
+
+      # package.json needs Node 25.4 or newer (native TypeScript, node:sqlite)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+          cache: pnpm
+
+      # The postinstall script only prepares library docs for Claude Code, which
+      # CI has no use for
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      # Includes the 100% coverage thresholds, so this fails if any are not met
+      - name: Test
+        run: pnpm test
