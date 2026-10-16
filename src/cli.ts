@@ -14,6 +14,8 @@ Options:
                          files. Use SAME to make the same as the config file name
                          (default: SAME)
   -q, --quote            In quote mode or not
+  -k, --keep-aux         Keep the auxiliary files (.aux, .log etc.) that latexmk
+                         makes, instead of removing them once the pdf is built
   -h, --help             Show this help`;
 
 export interface PathOptions {
@@ -44,7 +46,13 @@ export const resolvePaths = ({
 };
 
 export type CliResult =
-  | { kind: "run"; cfg: string; template: string; outPath: string }
+  | {
+      kind: "run";
+      cfg: string;
+      template: string;
+      outPath: string;
+      keepAux: boolean;
+    }
   | { kind: "exit"; message: string; exitCode: number };
 
 const parse = (argv: string[]) =>
@@ -55,6 +63,7 @@ const parse = (argv: string[]) =>
       template: { type: "string", short: "t" },
       "out-path": { type: "string", short: "o", default: "SAME" },
       quote: { type: "boolean", short: "q", default: false },
+      "keep-aux": { type: "boolean", short: "k", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -74,6 +83,7 @@ export const parseCli = (argv: string[]): CliResult => {
     return {
       kind: "run",
       cfg,
+      keepAux: values["keep-aux"],
       ...resolvePaths({
         cfg,
         template: values.template,

@@ -42,6 +42,7 @@ describe("README: Command Usage", () => {
       cfg: exampleCfg,
       template: "./invoice_template.tex",
       outPath: "./out/johnDoe.2000.01.01.tex",
+      keepAux: false,
     });
   });
 
@@ -69,6 +70,13 @@ describe("README: Command Usage", () => {
     });
     expect(parseCli(["--quote", exampleCfg])).toMatchObject({
       template: "./quote_template.tex",
+    });
+  });
+
+  it("--keep-aux / -k keeps the auxiliary files", () => {
+    expect(parseCli(["-k", exampleCfg])).toMatchObject({ keepAux: true });
+    expect(parseCli(["--keep-aux", exampleCfg])).toMatchObject({
+      keepAux: true,
     });
   });
 

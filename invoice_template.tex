@@ -8,6 +8,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[colorlinks]{hyperref}
 \usepackage[left=1in,top=1in,right=1in,bottom=1in]{geometry} % Document margins
+\usepackage[table]{xcolor} % Striped table rows, before the table packages
 \usepackage{tabularx}
 \usepackage{multirow}
 \usepackage{ragged2e}
@@ -20,6 +21,8 @@
     urlcolor=blue
 }
 
+% \cen redefines \\, which breaks the row counting that striped rows rely on
+\newcommand{\cen}{\centering\arraybackslash}
 \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 
 \begin{document}
@@ -51,23 +54,21 @@
 
 \vspace{2 cm}{* when ITEM_total_due *}
 
+\begingroup\renewcommand{\arraystretch}{1.5}\rowcolors{2}{white}{gray!15}
 \begin{tabularx}{\linewidth}{c X {* when ITEM_hrs *}X {/* when *}{* when ITEM_days *}X {/* when *}{* when ITEM_rate *}X {/* when *}c}
-    \centering{\bf{ITEM}}               & \centering{\bf{DESCRIPTION}}      {* when ITEM_hrs *} & \centering{\bf{HRS}}{/* when *}{* when ITEM_days *}      & \centering{\bf{DAYS}}{/* when *}{* when ITEM_rate *}      & \centering{\bf{RATE({{ PAYMENT.currency }}/HR)}} {/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})                   \\[2.5ex]\hline
-                                        & {* when ITEM_hrs *}                                   & {/* when *}{* when ITEM_days *}                          & {/* when *}{* when ITEM_rate *}                           & {/* when *}                                                  & \\{* map ITEM *}
-    \centering {{ ITEM.id }}            & \centering {{ ITEM.description }} {* when ITEM_hrs *} & \centering {{ ITEM.hrs }}{/* when *}{* when ITEM_days *} & \centering {{ ITEM.days }}{/* when *}{* when ITEM_rate *} & {/* when *} \centering {{ ITEM.rate }}                       & {{ ITEM.subtotal }}                                     \\[2.5ex]\hline
-                                        & {* when ITEM_hrs *}                                   & {/* when *}{* when ITEM_days *}                          & {/* when *}{* when ITEM_rate *}                           & {/* when *}                                                  & \\{/* map *}
-    {* unless EXPENSE_total_due *} & {* when ITEM_hrs *}                                   & {/* when *}{* when ITEM_days *}                          & {/* when *}{* when ITEM_rate *}                           & {/* when *} \bf \large{Total}                                & \large{{{ PAYMENT.currency }}{{ ITEM_total_due }}} \\[2.5ex]\hhline{~~~--}{/* unless *}
-\end{tabularx}{/* when *}{* when EXPENSE_total_due *}
+    \cen{\bf{ITEM}}               & \cen{\bf{DESCRIPTION}}      {* when ITEM_hrs *} & \cen{\bf{HRS}}{/* when *}{* when ITEM_days *}      & \cen{\bf{DAYS}}{/* when *}{* when ITEM_rate *}      & \cen{\bf{RATE({{ PAYMENT.currency }}/HR)}} {/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})                   \\[1ex]\hline{* map ITEM *}
+    \cen {{ ITEM.id }}            & \cen {{ ITEM.description }} {* when ITEM_hrs *} & \cen {{ ITEM.hrs }}{/* when *}{* when ITEM_days *} & \cen {{ ITEM.days }}{/* when *}{* when ITEM_rate *} & {/* when *} \cen {{ ITEM.rate }}                       & {{ ITEM.subtotal }}                                     \\{/* map *}
+    {* unless EXPENSE_total_due *}\rowcolor{white} &{* when ITEM_hrs *}                                   & {/* when *}{* when ITEM_days *}                          & {/* when *}{* when ITEM_rate *}                           & {/* when *} \bf \large{Total}                                & \large{{{ PAYMENT.currency }}{{ ITEM_total_due }}} \\[2.5ex]\hhline{~~~--}{/* unless *}
+\end{tabularx}\endgroup{/* when *}{* when EXPENSE_total_due *}
 
 \vspace{0.5 cm}
 
+\begingroup\renewcommand{\arraystretch}{1.5}\rowcolors{2}{white}{gray!15}
 \begin{tabularx}{\linewidth}{c X {* when EXPENSE_qty *}c {/* when *}{* when EXPENSE_rate *}c {/* when *}c}
-    \centering{\bf{EXPENSE}}    & \centering{\bf{DESCRIPTION}} {* when EXPENSE_qty *} & \centering{\bf{QTY}}{/* when *}{* when EXPENSE_rate *}         & \centering{\bf{RATE({{ PAYMENT.currency }})}}{/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})         \\[2.5ex]\hline
-                                & {* when EXPENSE_qty *}                              & {/* when *}{* when EXPENSE_rate *}                             & {/* when *}                                              & \\{* map EXPENSE *}
-    \centering {{ EXPENSE.id }} & {{ EXPENSE.description }}    {* when EXPENSE_qty *} & \centering {{ EXPENSE.qty }}{/* when *}{* when EXPENSE_rate *} & {/* when *} \centering {{ EXPENSE.rate }}                & {{ EXPENSE.subtotal }}                        \\[2.5ex]\hline
-                                & {* when EXPENSE_qty *}                              & {/* when *}{* when EXPENSE_rate *}                             & {/* when *}                                              & \\{/* map *}
-                                & {* when EXPENSE_qty *}                              & {/* when *}{* when EXPENSE_rate *}                             & {/* when *} \bf \large{Total}                            & \large{{{ PAYMENT.currency }}{* add ITEM_total_due EXPENSE_total_due */}} \\[2.5ex]\hhline{~~~--}
-\end{tabularx}{/* when *}
+    \cen{\bf{EXPENSE}}    & \cen{\bf{DESCRIPTION}} {* when EXPENSE_qty *} & \cen{\bf{QTY}}{/* when *}{* when EXPENSE_rate *}         & \cen{\bf{RATE({{ PAYMENT.currency }})}}{/* when *} & \bf SUB TOTAL({{ PAYMENT.currency }})         \\[1ex]\hline{* map EXPENSE *}
+    \cen {{ EXPENSE.id }} & {{ EXPENSE.description }}    {* when EXPENSE_qty *} & \cen {{ EXPENSE.qty }}{/* when *}{* when EXPENSE_rate *} & {/* when *} \cen {{ EXPENSE.rate }}                & {{ EXPENSE.subtotal }}                        \\{/* map *}
+    \rowcolor{white}            & {* when EXPENSE_qty *}                            & {/* when *}{* when EXPENSE_rate *}                             & {/* when *} \bf \large{Total}                            & \large{{{ PAYMENT.currency }}{* add ITEM_total_due EXPENSE_total_due */}} \\[2.5ex]\hhline{~~~--}
+\end{tabularx}\endgroup{/* when *}
 
 \vspace{3 cm}
 

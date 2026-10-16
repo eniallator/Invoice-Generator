@@ -68,26 +68,38 @@ describe("parseCli", () => {
       cfg: "cfg/x.cfg",
       template: "./invoice_template.tex",
       outPath: "./out/x.tex",
+      keepAux: false,
     });
   });
 
   it("supports the short options", () => {
-    expect(parseCli(["-q", "-t", "t.tex", "-o", "o.tex", "x.cfg"])).toEqual({
-      kind: "run",
-      cfg: "x.cfg",
-      template: "t.tex",
-      outPath: "o.tex",
-    });
-  });
-
-  it("supports the long options", () => {
     expect(
-      parseCli(["--quote", "--template=t.tex", "--out-path", "o.tex", "x.cfg"])
+      parseCli(["-q", "-k", "-t", "t.tex", "-o", "o.tex", "x.cfg"])
     ).toEqual({
       kind: "run",
       cfg: "x.cfg",
       template: "t.tex",
       outPath: "o.tex",
+      keepAux: true,
+    });
+  });
+
+  it("supports the long options", () => {
+    expect(
+      parseCli([
+        "--quote",
+        "--keep-aux",
+        "--template=t.tex",
+        "--out-path",
+        "o.tex",
+        "x.cfg",
+      ])
+    ).toEqual({
+      kind: "run",
+      cfg: "x.cfg",
+      template: "t.tex",
+      outPath: "o.tex",
+      keepAux: true,
     });
   });
 
@@ -97,7 +109,13 @@ describe("parseCli", () => {
       cfg: "x.cfg",
       template: "./quote_template.tex",
       outPath: "./out/x.tex",
+      keepAux: false,
     });
+  });
+
+  it("only keeps the auxiliary files when asked to", () => {
+    expect(parseCli(["x.cfg"])).toMatchObject({ keepAux: false });
+    expect(parseCli(["x.cfg", "-k"])).toMatchObject({ keepAux: true });
   });
 
   it("supports SAME as an explicit out path", () => {

@@ -2,7 +2,8 @@
 // the process and shells out to latexmk. Everything else lives in testable
 // modules.
 import { spawnSync } from "node:child_process";
-import { dirname } from "node:path";
+import { readdirSync, rmSync } from "node:fs";
+import { basename, dirname, extname, join } from "node:path";
 
 import { generateTex } from "./build.ts";
 import { parseCli } from "./cli.ts";
@@ -13,7 +14,7 @@ if (cli.kind === "exit") {
   process.exit(cli.exitCode);
 }
 
-const { cfg, template, outPath } = cli;
+const { cfg, template, outPath, keepAux } = cli;
 generateTex(cfg, template, outPath);
 
 const outDir = dirname(outPath);
@@ -32,3 +33,14 @@ const { error } = spawnSync(
   { stdio: "inherit" }
 );
 if (error !== undefined) throw error;
+
+// Leave just the .tex and the pdf: latexmk's auxiliary files (.aux, .log,
+// .synctex.gz etc.) are named after the .tex file, in the same directory
+if (!keepAux) {
+  const prefix = `${basename(outPath, ".tex")}.`;
+  for (const file of readdirSync(outDir)) {
+    if (file.startsWith(prefix) && ![".tex", ".pdf"].includes(extname(file))) {
+      rmSync(join(outDir, file));
+    }
+  }
+}

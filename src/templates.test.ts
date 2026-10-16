@@ -80,16 +80,16 @@ describe("invoice_template.tex", () => {
 
     it("shows the item table with each item", () => {
       expect(result).toContain(ITEM_TABLE);
-      expect(result).toContain("\\centering 1");
-      expect(result).toContain("\\centering Work");
-      expect(result).toContain("\\centering 2");
-      expect(result).toContain("\\centering More work");
+      expect(result).toContain("\\cen 1");
+      expect(result).toContain("\\cen Work");
+      expect(result).toContain("\\cen 2");
+      expect(result).toContain("\\cen More work");
     });
 
     it("shows each item's formatted rate and subtotal", () => {
-      expect(result).toContain("\\centering 6.00");
+      expect(result).toContain("\\cen 6.00");
       expect(result).toContain("30.00");
-      expect(result).toContain("\\centering 3.00");
+      expect(result).toContain("\\cen 3.00");
       expect(result).toContain("6.00");
     });
 
@@ -224,9 +224,9 @@ describe("quote_template.tex", () => {
     );
 
     it("lists each item with its subtotal", () => {
-      expect(result).toContain("\\centering 1 & Build");
+      expect(result).toContain("\\cen 1 & Build");
       expect(result).toContain("\\pounds30.00");
-      expect(result).toContain("\\centering 2 & Test");
+      expect(result).toContain("\\cen 2 & Test");
       expect(result).toContain("\\pounds6.00");
     });
 

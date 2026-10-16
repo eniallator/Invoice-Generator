@@ -23,6 +23,10 @@ The following arguments exist:
   - The output destination for all the auxiliary files as well as the output pdf that `latexmk` creates. This defaults to `SAME`, which names it after the config file (e.g. `./out/johnDoe.2000.01.01.tex`)
 - `--quote`/`-q`
   - Alias for setting the default template to `./quote_template.tex`. So if the template is provided, the given parameter overrides this option.
+- `--keep-aux`/`-k`
+  - Keep the auxiliary files that `latexmk` makes (`.aux`, `.log`, `.synctex.gz` etc.). By default these are removed once the pdf is built, leaving just the `.tex` and the pdf.
+
+To rebuild the example `.tex` and pdf files, run `pnpm regenerate-examples`.
 
 ## How It Works
 

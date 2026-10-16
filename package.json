@@ -32,6 +32,7 @@
   },
   "scripts": {
     "generate": "node src/generate.ts",
+    "regenerate-examples": "node scripts/regenerate-examples.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint ./src",
     "format": "prettier --write .",
