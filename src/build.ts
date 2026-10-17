@@ -5,11 +5,15 @@ import { readText, writeText } from "./io.ts";
 import { ContextVariables } from "./template/context-variables.ts";
 import { DynamicContentParser } from "./template/dynamic-content-parser.ts";
 
-export const renderTemplate = (cfg: string, template: string): string =>
-  new DynamicContentParser(
-    new ContextVariables(cfg),
-    resolve(dirname(template))
-  ).parseString(readText(template));
+/** Pass the `variables` to look at what rendering the template made them compute */
+export const renderTemplate = (
+  cfg: string,
+  template: string,
+  variables = new ContextVariables(cfg)
+): string =>
+  new DynamicContentParser(variables, resolve(dirname(template))).parseString(
+    readText(template)
+  );
 
 export const generateTex = (
   cfg: string,

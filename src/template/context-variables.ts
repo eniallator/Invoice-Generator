@@ -1,6 +1,6 @@
-import { memoize, raise } from "niall-utils";
+import { memoize, raise, tuple, zip } from "niall-utils";
 
-import type { Config } from "../config/config.ts";
+import { DEFAULT_SECTION, type Config } from "../config/config.ts";
 import { loadConfig, META } from "../config/imports.ts";
 import { formatFixed2 } from "../numbers.ts";
 import { mergeItems, normaliseItem, sumOption, type Item } from "./items.ts";
@@ -46,6 +46,42 @@ export class ContextVariables {
   }
 
   /**
+   * Every section with its imports merged, and with the groups that have been
+   * used so far (by mapping over them or using their variables) as they were
+   * computed: their items are normalised with the subtotals worked out, and
+   * their totals are added to META (e.g. `ITEM_total_due`, unless the config
+   * sets it itself). Nothing is computed here, so call it after rendering.
+   */
+  resolvedSections(): Map<string, Item> {
+    const sections = new Map(
+      this.config
+        .sectionNames()
+        .filter(name => name !== DEFAULT_SECTION)
+        .map(name => tuple(name, this.config.items(name)))
+    );
+    const meta = this.config.items(META);
+    meta.delete("import");
+    sections.set(META, meta);
+
+    for (const prefix of this.usedPrefixes) {
+      const { items, values } = this.group(prefix);
+      const names = [...sections.keys()]
+        .filter(name => name.startsWith(`${prefix}_`))
+        .sort();
+      for (const [name, item] of zip(names, items)) sections.set(name, item);
+      for (const key of ["total_due", "total_recurring_due"]) {
+        const variable = `${prefix}_${key}`;
+        const value = values.get(key) ?? "";
+        // option names are lower cased when a config is read
+        if (value !== "" && !meta.has(variable.toLowerCase())) {
+          meta.set(variable, value);
+        }
+      }
+    }
+    return sections;
+  }
+
+  /**
    * Looks up `section.option`, or `option` in META. Anything in META that is not
    * in the config can also be a group variable, so `ITEM_total_due` is the same
    * as `META.ITEM_total_due`: `<prefix>_total_due`,
@@ -83,23 +119,33 @@ export class ContextVariables {
     return undefined;
   }
 
-  private readonly group = memoize((prefix: string): Group => {
-    const sectionPrefix = `${prefix}_`;
-    const entries = this.config
-      .sectionNames()
-      .filter(section => section.startsWith(sectionPrefix))
-      .sort()
-      .map(section => ({
-        raw: this.config.items(section),
-        id: section.slice(sectionPrefix.length),
-      }));
-    const items = entries.map(({ raw, id }) => normaliseItem(raw, id));
-    return {
-      items,
-      values: groupValues(
-        entries.map(({ raw }) => raw),
-        items
-      ),
-    };
-  });
+  /** The prefixes that groups have been asked for, which `group` caches */
+  private readonly usedPrefixes = new Set<string>();
+
+  private readonly group = memoize(
+    (prefix: string): Group => {
+      const sectionPrefix = `${prefix}_`;
+      const entries = this.config
+        .sectionNames()
+        .filter(section => section.startsWith(sectionPrefix))
+        .sort()
+        .map(section => ({
+          raw: this.config.items(section),
+          id: section.slice(sectionPrefix.length),
+        }));
+      const items = entries.map(({ raw, id }) => normaliseItem(raw, id));
+      return {
+        items,
+        values: groupValues(
+          entries.map(({ raw }) => raw),
+          items
+        ),
+      };
+    },
+    // memoize calls this for every lookup, which is how the prefixes get noted
+    prefix => {
+      this.usedPrefixes.add(prefix);
+      return prefix;
+    }
+  );
 }

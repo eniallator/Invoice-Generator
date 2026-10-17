@@ -10,19 +10,21 @@ At its simplest, you write a raw invoice (copy the [example invoice config](./ra
 pnpm generate ./raw_invoices/janeRoe.2000.04.03.cfg
 ```
 
-If you track your time with the Time Tracker app and use Gmail, the optional [time tracker](#time-tracker-optional) and [emailing](#emailing-invoices-optional) steps can do the rest of the work for a month's invoices, so the flow becomes:
+If you track your time with the Time Tracker app and use Gmail, the optional [time tracker](#time-tracker-optional), [exporting](#exporting-invoices-optional) and [emailing](#emailing-invoices-optional) steps can do the rest of the work for a month's invoices, so the flow becomes:
 
 ```properties
 pnpm fetch-db
 pnpm draft-invoices 2000 3
 pnpm generate ./raw_invoices/janeRoe.2000.04.03.cfg
+pnpm export ./raw_invoices/janeRoe.2000.04.03.cfg
 pnpm email-invoices ./raw_invoices/janeRoe.2000.04.03.cfg
 ```
 
 1. `pnpm fetch-db` copies the newest database backup from Google Drive into `timetracker_databases/`.
 2. `pnpm draft-invoices 2000 3` writes a draft raw invoice for every client with time in March 2000, with an item for each day worked, and the next invoice id. Look over each draft and edit it, for example to add expenses or extra items that are not in the app.
 3. `pnpm generate <cfg>` fills out the template from the raw invoice and builds the pdf, once for each invoice.
-4. `pnpm email-invoices <cfg>` creates a Gmail draft for the invoice with the pdf attached. Look over the draft in Gmail, and send it from there.
+4. `pnpm export <cfg>` keeps a copy of the invoice: its pdf goes into your invoices folder, and its fully worked out config into a `raw_invoices` folder next to it.
+5. `pnpm email-invoices <cfg>` creates a Gmail draft for the invoice with the exported pdf attached. Look over the draft in Gmail, and send it from there.
 
 Each of these steps works on its own, so you can start or stop anywhere in the flow.
 
@@ -75,6 +77,8 @@ import=./default
   ./anothercfg
   ../clients/my-client
 ```
+
+Later imports override earlier ones, so this is also a good way to keep a history of your own details: put each set in its own file (e.g. `me/2000.01.01.cfg`, named after the first invoice that used it), import the current one from your default config, and have older invoices import the one that was current when they were made.
 
 ### Invoice Items
 
@@ -440,12 +444,34 @@ The ids that have been used are kept in `.invoice-numbers.json` (gitignored). A 
 
 `--invoice-id <id>` uses a specific id for a draft instead, without changing the last id that new drafts continue from. This is for one invoice, so if several clients have time that month, say which with `--client`.
 
-## Emailing Invoices (optional)
+## Exporting Invoices (optional)
 
-Once an invoice's pdf has been generated, `pnpm email-invoices` can create a Gmail draft for it with the pdf attached, ready for you to look over and send. It only ever creates drafts, it is not able to read or send any email. This is also optional, and nothing else needs it.
+`pnpm export` keeps a record of each invoice you have made, so that your invoices folder is the place to look for what was sent. Once an invoice's pdf has been generated:
 
 ```properties
 pnpm generate ./raw_invoices/janeRoe.2000.04.03.cfg
+pnpm export ./raw_invoices/janeRoe.2000.04.03.cfg
+```
+
+This copies the pdf to `janeRoe.2000.04.03.pdf` in the folder that `EXPORT_PDF_DIR` points to, and writes the invoice's fully resolved config to `janeRoe.2000.04.03.cfg` in the folder that `EXPORT_CFG_DIR` points to. Set both in `.env`, as in [.env.example](./.env.example). The config folder is meant to be a `raw_invoices` folder next to the invoices folder, but they can be anywhere.
+
+The resolved config is the raw invoice with everything worked out, so it does not depend on the files it imports (like your details and the client's), which may change later:
+
+- Everything it imports is merged in, so it has no `import`.
+- The items the template used are filled out: each has its `id` and its `subtotal`, and the numbers are formatted.
+- The totals the template used are written into `META`, e.g. `ITEM_total_due`.
+
+It is made after rendering the template, from what the template actually used, so groups it did not use are left as you wrote them. It can be used as a raw invoice itself, and generates the same invoice: `pnpm generate` it to check.
+
+An invoice that has already been exported is not replaced, unless you pass `--overwrite`. Use `--template`/`-t` (or `--quote`/`-q`) for an invoice that was generated with a different template.
+
+## Emailing Invoices (optional)
+
+Once an invoice's pdf has been generated and [exported](#exporting-invoices-optional), `pnpm email-invoices` can create a Gmail draft for it with the exported pdf (from `EXPORT_PDF_DIR`) attached, ready for you to look over and send. It only ever creates drafts, it is not able to read or send any email. This is also optional, and nothing else needs it.
+
+```properties
+pnpm generate ./raw_invoices/janeRoe.2000.04.03.cfg
+pnpm export ./raw_invoices/janeRoe.2000.04.03.cfg
 pnpm email-invoices ./raw_invoices/janeRoe.2000.04.03.cfg
 ```
 

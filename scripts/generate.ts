@@ -1,12 +1,12 @@
-// Process entry point: kept thin (and excluded from coverage) because it exits
-// the process and shells out to latexmk. Everything else lives in testable
-// modules.
+// Process entry point: kept thin (the scripts are not covered by the tests)
+// because it exits the process and shells out to latexmk. Everything else
+// lives in testable modules under src.
 import { spawnSync } from "node:child_process";
 import { readdirSync, rmSync } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
 
-import { generateTex } from "./build.ts";
-import { parseCli } from "./cli.ts";
+import { generateTex } from "../src/build.ts";
+import { parseCli } from "../src/cli.ts";
 
 const cli = parseCli(process.argv.slice(2));
 if (cli.kind === "exit") {
@@ -20,16 +20,7 @@ generateTex(cfg, template, outPath);
 const outDir = dirname(outPath);
 const { error } = spawnSync(
   "latexmk",
-  [
-    "-synctex=1",
-    "-interaction=nonstopmode",
-    "-file-line-error",
-    "-pdf",
-    "-f",
-    `-aux-directory=${outDir}`,
-    `-output-directory=${outDir}`,
-    outPath,
-  ],
+  ["-pdf", "-interaction=nonstopmode", `-output-directory=${outDir}`, outPath],
   { stdio: "inherit" }
 );
 if (error !== undefined) throw error;

@@ -66,6 +66,33 @@ describe("invoice_template.tex", () => {
     expect(result).toContain("Account Name: Account Name");
   });
 
+  describe("payment details", () => {
+    const withPayment = (...options: string[]) =>
+      render(INVOICE, lines("[PAYMENT]", "bank=B", ...options));
+
+    it("leaves out the account address and bank address when there are none", () => {
+      const result = withPayment();
+      expect(result).not.toContain("Account Address");
+      expect(result).not.toContain("Bank Address");
+    });
+
+    it("shows the account address when there is one", () => {
+      expect(withPayment("account_address=1 Road, Town")).toContain(
+        "Account Address: 1 Road, Town"
+      );
+    });
+
+    it("shows the bank address straight after the bank when there is one", () => {
+      expect(withPayment("bank_address=2 Road")).toContain(
+        "Bank: B\\\\Bank Address: 2 Road"
+      );
+    });
+
+    it("leaves out an account address that is empty", () => {
+      expect(withPayment("account_address=")).not.toContain("Account Address");
+    });
+  });
+
   describe("with items only", () => {
     const result = invoice(
       "[ITEM_1]",

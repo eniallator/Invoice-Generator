@@ -31,17 +31,18 @@
     "vitest": "^5.0.3"
   },
   "scripts": {
-    "generate": "node src/generate.ts",
-    "fetch-db": "node src/fetch-db.ts",
-    "draft-invoices": "node src/draft-invoices.ts",
-    "email-invoices": "node src/email-invoices.ts",
-    "regenerate-examples": "node scripts/regenerate-examples.mjs",
+    "generate": "node scripts/generate.ts",
+    "fetch-db": "node scripts/fetch-db.ts",
+    "draft-invoices": "node scripts/draft-invoices.ts",
+    "export": "node scripts/export.ts",
+    "email-invoices": "node scripts/email-invoices.ts",
+    "regenerate-examples": "node scripts/regenerate-examples.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint ./src",
+    "lint": "oxlint ./src ./scripts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "findissues": "pnpm typecheck && pnpm lint && pnpm format:check",
-    "lib-docs": "node scripts/lib-docs.mjs",
+    "lib-docs": "node scripts/lib-docs.ts",
     "postinstall": "pnpm lib-docs",
     "test": "vitest run --config vitest.config.js --coverage"
   }

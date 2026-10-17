@@ -76,7 +76,7 @@
 
 \begin{tabularx}{\linewidth}{X r}
     \underline{Payment Instructions:} \hspace*{\fill} & \underline{Terms:} {{ invoice_terms }} \\
-    Account Name: {{ PAYMENT.account_name }}                                                   \\Account Address: {{ PAYMENT.account_address }} \\Account Number: {{ PAYMENT.account_number }} \\Bank Sort Code: {{ PAYMENT.bank_sort_code }} \\Bank: {{ PAYMENT.bank }}
+    Account Name: {{ PAYMENT.account_name }}                                                   {* when PAYMENT.account_address *}\\Account Address: {{ PAYMENT.account_address }} {/* when *}\\Account Number: {{ PAYMENT.account_number }} \\Bank Sort Code: {{ PAYMENT.bank_sort_code }} \\Bank: {{ PAYMENT.bank }}{* when PAYMENT.bank_address *}\\Bank Address: {{ PAYMENT.bank_address }}{/* when *}
 \end{tabularx}
 
 \end{document}

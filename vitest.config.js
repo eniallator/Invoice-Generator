@@ -9,16 +9,9 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
-      // The process entries (they exit the process, shell out to latexmk or touch
-      // Google Drive) and test support code
-      exclude: [
-        "src/generate.ts",
-        "src/fetch-db.ts",
-        "src/draft-invoices.ts",
-        "src/email-invoices.ts",
-        "src/test-helpers.ts",
-        "src/**/*.test.ts",
-      ],
+      // Test support code (the process entries are in ./scripts, so are not
+      // included in the first place)
+      exclude: ["src/test-helpers.ts", "src/**/*.test.ts"],
       thresholds: {
         statements: 100,
         branches: 100,

@@ -1,18 +1,21 @@
-// Process entry point: kept thin (and excluded from coverage) like generate.ts.
-// Writes a draft raw invoice for each client with time in the given month, from
-// the newest database in timetracker_databases.
+// Process entry point: kept thin like generate.ts, as the scripts are not
+// covered by the tests. Writes a draft raw invoice for each client with time in
+// the given month, from the newest database in timetracker_databases.
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { parseArgs } from "node:util";
 import { formatLocaleDate, raise } from "niall-utils";
 
-import { loadEnv, requireEnv } from "./env.ts";
-import { DATABASES_DIR, latestDatabase } from "./timetracker/database-files.ts";
-import { createDrafts } from "./timetracker/drafts.ts";
-import { INVOICE_NUMBERS_FILE } from "./timetracker/invoice-numbers.ts";
-import { parseThresholdMinutes } from "./timetracker/rounding.ts";
-import { readExpenses, readTimeEntries } from "./timetracker/time-data.ts";
+import { loadEnv, requireEnv } from "../src/env.ts";
+import {
+  DATABASES_DIR,
+  latestDatabase,
+} from "../src/timetracker/database-files.ts";
+import { createDrafts } from "../src/timetracker/drafts.ts";
+import { INVOICE_NUMBERS_FILE } from "../src/timetracker/invoice-numbers.ts";
+import { parseThresholdMinutes } from "../src/timetracker/rounding.ts";
+import { readExpenses, readTimeEntries } from "../src/timetracker/time-data.ts";
 
 const USAGE = `Usage: pnpm draft-invoices <year> <month> [options]
 

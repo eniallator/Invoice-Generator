@@ -1,28 +1,30 @@
-// Process entry point: kept thin (and excluded from coverage) like generate.ts.
-// Creates a Gmail draft for each invoice, with its pdf attached, ready to review
-// and send. Run `pnpm generate` for the invoice first, so that its pdf exists.
+// Process entry point: kept thin like generate.ts, as the scripts are not
+// covered by the tests. Creates a Gmail draft for each invoice, with its pdf
+// attached, ready to review and send. Run `pnpm generate` and `pnpm export` for
+// the invoice first, so that its pdf has been exported.
 import { readFileSync } from "node:fs";
-import { basename } from "node:path";
+import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
 import { raise } from "niall-utils";
 
-import { renderTemplate } from "./build.ts";
-import { resolvePaths } from "./cli.ts";
-import { loadConfig, META } from "./config/imports.ts";
+import { renderTemplate } from "../src/build.ts";
+import { loadConfig, META } from "../src/config/imports.ts";
 import {
   createDraft,
   getAccessToken,
   parseCredentials,
-} from "./email/gmail.ts";
-import { parseEmail, parseRecipients } from "./email/message.ts";
-import { buildMessage } from "./email/mime.ts";
-import { loadEnv, requireEnv } from "./env.ts";
-import { isFile, readText } from "./io.ts";
+} from "../src/email/gmail.ts";
+import { parseEmail, parseRecipients } from "../src/email/message.ts";
+import { buildMessage } from "../src/email/mime.ts";
+import { loadEnv, requireEnv } from "../src/env.ts";
+import { exportName } from "../src/export-invoice.ts";
+import { isFile, readText } from "../src/io.ts";
 
 const USAGE = `Usage: pnpm email-invoices <cfg>... [options]
 
 Create a Gmail draft for each invoice, with its pdf attached. The pdf is the
-one that \`pnpm generate <cfg>\` makes. Nothing is sent, you do that from Gmail.
+one in EXPORT_PDF_DIR, which \`pnpm export <cfg>\` puts it in after
+\`pnpm generate <cfg>\` makes it. Nothing is sent, you do that from Gmail.
 
 Options:
   -t, --template <path>  Email template, with the subject on its first line
@@ -63,16 +65,15 @@ const accessToken = await getAccessToken(
   fetch
 );
 
+const pdfDir = requireEnv("EXPORT_PDF_DIR");
+
 for (const cfg of positionals) {
-  const pdfPath = resolvePaths({
-    cfg,
-    template: undefined,
-    outPath: "SAME",
-    quote: false,
-  }).outPath.replace(/\.tex$/, ".pdf");
+  const pdfPath = join(pdfDir, `${exportName(cfg)}.pdf`);
   if (!isFile(pdfPath)) {
     raise(
-      new Error(`${pdfPath} does not exist, run pnpm generate ${cfg} first`)
+      new Error(
+        `${pdfPath} does not exist, run pnpm generate ${cfg} and then pnpm export ${cfg} first`
+      )
     );
   }
 

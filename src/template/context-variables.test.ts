@@ -401,4 +401,109 @@ describe("ContextVariables", () => {
       });
     });
   });
+
+  describe("resolvedSections", () => {
+    const resolved = (ctx: ReturnType<typeof contextFrom>) =>
+      Object.fromEntries(
+        [...ctx.resolvedSections()].map(([name, options]) => [
+          name,
+          Object.fromEntries(options),
+        ])
+      );
+
+    it("merges the imports and leaves out the import option", () => {
+      const ctx = contextFrom(
+        lines("[META]", "import=./other", "invoice_id=1"),
+        { "other.cfg": lines("[META]", "colour=red", "[PAYMENT]", "bank=B") }
+      );
+      expect(resolved(ctx)).toEqual({
+        META: { colour: "red", invoice_id: "1" },
+        PAYMENT: { bank: "B" },
+      });
+    });
+
+    it("leaves the DEFAULT section out, as every section has its options", () => {
+      const ctx = contextFrom(
+        lines("[DEFAULT]", "rate=10", "[ITEM_1]", "hrs=2")
+      );
+      expect(Object.keys(resolved(ctx))).toEqual(["META", "ITEM_1"]);
+      expect(resolved(ctx)["ITEM_1"]).toEqual({ rate: "10", hrs: "2" });
+    });
+
+    it("leaves groups that were not used as they were written", () => {
+      const ctx = contextFrom(lines("[ITEM_1]", "hrs=5", "rate=6"));
+      expect(resolved(ctx)).toEqual({
+        META: {},
+        ITEM_1: { hrs: "5", rate: "6" },
+      });
+    });
+
+    it("has the groups that were used as they were worked out", () => {
+      const ctx = contextFrom(lines("[ITEM_1]", "hrs=5", "rate=6"));
+      ctx.calculateItems("ITEM");
+      expect(resolved(ctx)).toEqual({
+        META: { ITEM_total_due: "30.00" },
+        ITEM_1: { hrs: "5", rate: "6.00", id: "1", subtotal: "30.00" },
+      });
+    });
+
+    it("counts a group as used when one of its variables was", () => {
+      const ctx = contextFrom(
+        lines("[ITEM_1]", "hrs=5", "rate=6", "[EXPENSE_1]", "subtotal=2")
+      );
+      ctx.getVariable("EXPENSE_total_due");
+      expect(resolved(ctx)).toEqual({
+        META: { EXPENSE_total_due: "2.00" },
+        ITEM_1: { hrs: "5", rate: "6" },
+        EXPENSE_1: { subtotal: "2.00", id: "1" },
+      });
+    });
+
+    it("adds a group's recurring total when something recurs", () => {
+      const ctx = contextFrom(lines("[ITEM_1]", "recurring=7"));
+      ctx.calculateItems("ITEM");
+      expect(resolved(ctx)["META"]).toEqual({
+        ITEM_total_due: "0.00",
+        ITEM_total_recurring_due: "7.00",
+      });
+    });
+
+    it("does not replace a total that the config sets", () => {
+      const ctx = contextFrom(
+        lines("[META]", "ITEM_total_due=999", "[ITEM_1]", "hrs=1", "rate=1")
+      );
+      // the config's total is used, so only mapping over the items works them out
+      expect(ctx.getVariable("ITEM_total_due")).toBe("999");
+      ctx.calculateItems("ITEM");
+      // option names are lower cased when a config is read
+      expect(resolved(ctx)["META"]).toEqual({ item_total_due: "999" });
+      expect(resolved(ctx)["ITEM_1"]?.["subtotal"]).toBe("1.00");
+    });
+
+    it("has nothing for groups that do not exist", () => {
+      const ctx = contextFrom(lines("[ITEM_1]", "hrs=1"));
+      ctx.getVariable("NOPE_total_due");
+      expect(resolved(ctx)).toEqual({ META: {}, ITEM_1: { hrs: "1" } });
+    });
+
+    it("matches the items to their sections by the sorted section names", () => {
+      const ctx = contextFrom(
+        lines("[ITEM_2]", "hrs=1", "rate=1", "[ITEM_10]", "hrs=2", "rate=1")
+      );
+      ctx.calculateItems("ITEM");
+      expect(resolved(ctx)["ITEM_2"]).toMatchObject({
+        id: "2",
+        subtotal: "1.00",
+      });
+      expect(resolved(ctx)["ITEM_10"]).toMatchObject({
+        id: "10",
+        subtotal: "2.00",
+      });
+    });
+
+    it("does not compute anything itself", () => {
+      const ctx = contextFrom(lines("[ITEM_1]", "hrs=1.x", "rate=abc"));
+      expect(() => ctx.resolvedSections()).not.toThrow();
+    });
+  });
 });

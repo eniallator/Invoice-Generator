@@ -4,20 +4,21 @@
 // files are out of date.
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { tuple } from "niall-utils";
 
 const root = join(import.meta.dirname, "..");
 
 const EXAMPLES = [
-  [
+  tuple(
     "raw_invoices/johnDoe.2000.01.01.cfg",
     "invoice_template.tex",
-    "example_invoice.tex",
-  ],
-  [
+    "example_invoice.tex"
+  ),
+  tuple(
     "raw_quotes/johnDoe.2000.01.01.cfg",
     "quote_template.tex",
-    "example_quote.tex",
-  ],
+    "example_quote.tex"
+  ),
 ];
 
 for (const [cfg, template, output] of EXAMPLES) {
