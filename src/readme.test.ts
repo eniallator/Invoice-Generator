@@ -221,7 +221,7 @@ describe("README: Map Directive", () => {
       lines(
         "Invoice Items:",
         "ID, hrs, rate, subtotal",
-        "{* map ./invoice_item.typ ITEM */}Total: {{ ITEM_total_due }}"
+        "/*% map ./invoice_item.typ ITEM %*/Total: {{ ITEM_total_due }}"
       ),
       ITEMS_CFG,
       {
@@ -243,7 +243,7 @@ describe("README: Map Directive", () => {
   it("repeats the contents for each section in alphabetical order", () => {
     expect(
       render(
-        "{* map ITEM *}{{ ITEM.id }};{/* map *}",
+        "/*% map ITEM >*/{{ ITEM.id }};/*< map %*/",
         lines("[ITEM_b]", "[ITEM_a]", "[ITEM_c]", "[OTHER_x]")
       )
     ).toBe("a;b;c;");
@@ -258,7 +258,7 @@ describe("README: Map Directive", () => {
       "price=10"
     );
     const result = render(
-      "{* map ITEM *}Item {{ ITEM.id }} ({{ ITEM.subtotal }} of {{ ITEM_total_due }}):{* map EXPENSE *} {{ EXPENSE.description }}{/* map *}\n{/* map *}",
+      "/*% map ITEM >*/Item {{ ITEM.id }} ({{ ITEM.subtotal }} of {{ ITEM_total_due }}):/*% map EXPENSE >*/ {{ EXPENSE.description }}/*< map %*/\n/*< map %*/",
       cfg
     );
     expect(result).toBe(
@@ -273,7 +273,7 @@ describe("README: Map Directive", () => {
   it("lets an inner item replace an outer one with the same prefix", () => {
     expect(
       render(
-        "{* map ITEM *}{* map ITEM *}{{ ITEM.id }}{/* map *}|{/* map *}",
+        "/*% map ITEM >*//*% map ITEM >*/{{ ITEM.id }}/*< map %*/|/*< map %*/",
         ITEMS_CFG
       )
     ).toBe("12|12|");
@@ -285,8 +285,8 @@ describe("README: Inline Items Directive", () => {
     const result = render(
       lines(
         "Invoice Items:",
-        "ID, hrs, rate, subtotal{* map ITEM *}",
-        "{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{/* map *}",
+        "ID, hrs, rate, subtotal/*% map ITEM >*/",
+        "{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}/*< map %*/",
         "Total: {{ ITEM_total_due }}"
       ),
       ITEMS_CFG
@@ -306,10 +306,10 @@ describe("README: Inline Items Directive", () => {
 describe("README: When Directive", () => {
   const template = lines(
     "Invoice Items:",
-    "ID, hrs, rate, subtotal{* when ITEM_total_recurring_due *}, Recurring{/* when *}{* map ITEM *}",
-    "{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* when ITEM_total_recurring_due *}, {{ITEM.recurring}}{/* when *}{/* map *}",
-    "Total: {{ ITEM_total_due }}{* when ITEM_total_recurring_due *}",
-    "Total Recurring: {{ITEM_total_recurring_due}}{/* when *}",
+    "ID, hrs, rate, subtotal/*% when ITEM_total_recurring_due >*/, Recurring/*< when %*//*% map ITEM >*/",
+    "{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}/*% when ITEM_total_recurring_due >*/, {{ITEM.recurring}}/*< when %*//*< map %*/",
+    "Total: {{ ITEM_total_due }}/*% when ITEM_total_recurring_due >*/",
+    "Total Recurring: {{ITEM_total_recurring_due}}/*< when %*/",
     ""
   );
 
@@ -342,7 +342,7 @@ describe("README: When Directive", () => {
 
   it("unless does the inverse of when", () => {
     const unless =
-      "{* unless ITEM_total_recurring_due *}nothing recurring{/* unless *}";
+      "/*% unless ITEM_total_recurring_due >*/nothing recurring/*< unless %*/";
     expect(render(unless, ITEMS_CFG)).toBe("nothing recurring");
     expect(render(unless, RECURRING_CFG)).toBe("");
   });
@@ -363,30 +363,36 @@ describe("README: Add Directive", () => {
 
   it("adds up the variables given as arguments", () => {
     expect(
-      render("Total: {* add ITEM_total_due EXPENSE_total_due */}", cfg)
+      render("Total: /*% add ITEM_total_due EXPENSE_total_due %*/", cfg)
     ).toBe("Total: 50.00");
   });
 
   it("adds up the variables given as the arguments and the contents", () => {
     expect(
-      render("Total: {* add ITEM_total_due *}EXPENSE_total_due{/* add *}", cfg)
+      render(
+        "Total: /*% add ITEM_total_due >*/EXPENSE_total_due/*< add %*/",
+        cfg
+      )
     ).toBe("Total: 50.00");
   });
 
   it("counts empty and missing variables as zero", () => {
     expect(
-      render("{* add ITEM_total_due ITEM_total_recurring_due NOPE */}", cfg)
+      render("/*% add ITEM_total_due ITEM_total_recurring_due NOPE %*/", cfg)
     ).toBe("30.00");
   });
 
   it("adds up the variables given as the contents alone", () => {
     expect(
-      render("Total: {* add *}ITEM_total_due EXPENSE_total_due{/* add *}", cfg)
+      render(
+        "Total: /*% add >*/ITEM_total_due EXPENSE_total_due/*< add %*/",
+        cfg
+      )
     ).toBe("Total: 50.00");
   });
 
   it("needs at least two variables", () => {
-    expect(() => render("{* add ITEM_total_due */}", cfg)).toThrow(
+    expect(() => render("/*% add ITEM_total_due %*/", cfg)).toThrow(
       "add directive needs at least two context variables to add up"
     );
   });

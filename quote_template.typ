@@ -54,12 +54,12 @@
   columns: (auto, 1fr, auto),
   align: (left, left, right),
   head[ITEM], head[DESCRIPTION], head[SUB TOTAL],
-  table.hline(y: 1, stroke: 0.4pt),/*% map ITEM %*/
-  [{{ ITEM.id }}], [{{ ITEM.description }}], [{{ PAYMENT.currency }}{{ ITEM.subtotal }}],/*% end map %*/
+  table.hline(y: 1, stroke: 0.4pt),/*% map ITEM >*/
+  [{{ ITEM.id }}], [{{ ITEM.description }}], [{{ PAYMENT.currency }}{{ ITEM.subtotal }}],/*< map %*/
 )
 
 #v(0.35em)
-#total[{{ PAYMENT.currency }}{{ ITEM_total_due }}/*% unless ITEM_total_due %*/0.00/*% end unless %*/]
+#total[{{ PAYMENT.currency }}{{ ITEM_total_due }}/*% unless ITEM_total_due >*/0.00/*< unless %*/]
 
 #v(3cm - 3pt)
 
@@ -76,5 +76,5 @@
 
 #set par(justify: true)
 #set list(indent: 12pt, body-indent: 7pt, tight: false, spacing: 0.9em)
-/*% map ITEM %*/- *{{ ITEM.description }}* - {{ ITEM.responsibility }}
-/*% end map %*/
+/*% map ITEM >*/- *{{ ITEM.description }}* - {{ ITEM.responsibility }}
+/*< map %*/

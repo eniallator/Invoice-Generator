@@ -64,34 +64,34 @@ describe("realpath", () => {
 describe("parseItemPath", () => {
   let dir = "";
   beforeEach(() => {
-    dir = createFiles({ "sub/item.tex": "", "other.tex": "" });
+    dir = createFiles({ "sub/item.typ": "", "other.typ": "" });
   });
 
   it("resolves dot-prefixed paths against the base path", () => {
-    expect(parseItemPath("./sub/item.tex", dir)).toBe(
-      realpathSync(join(dir, "sub", "item.tex"))
+    expect(parseItemPath("./sub/item.typ", dir)).toBe(
+      realpathSync(join(dir, "sub", "item.typ"))
     );
-    expect(parseItemPath("../other.tex", join(dir, "sub"))).toBe(
-      realpathSync(join(dir, "other.tex"))
+    expect(parseItemPath("../other.typ", join(dir, "sub"))).toBe(
+      realpathSync(join(dir, "other.typ"))
     );
   });
 
   it("resolves other paths against the current working directory", () => {
-    expect(parseItemPath("some/where.tex", dir)).toBe(
-      resolve("some/where.tex")
+    expect(parseItemPath("some/where.typ", dir)).toBe(
+      resolve("some/where.typ")
     );
   });
 
   it("keeps absolute paths as they are", () => {
-    const absolute = join(dir, "other.tex");
+    const absolute = join(dir, "other.typ");
     expect(parseItemPath(absolute, "/ignored")).toBe(absolute);
   });
 
-  it.each(['"./other.tex"', "'./other.tex'"])(
+  it.each(['"./other.typ"', "'./other.typ'"])(
     "strips matching surrounding quotes from %s",
     quoted => {
       expect(parseItemPath(quoted, dir)).toBe(
-        realpathSync(join(dir, "other.tex"))
+        realpathSync(join(dir, "other.typ"))
       );
     }
   );

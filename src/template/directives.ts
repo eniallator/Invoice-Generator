@@ -33,7 +33,7 @@ const CONTENTS_FILE_PATH_RE = /^("[^"]+"|'[^']+'|\S+)/;
 // For directives that opt in to taking their contents from a file. The contents
 // are whatever is between the tags, but a self closing directive has none, so
 // its first argument is the path of the file that has them instead:
-// `{* name ./contents.tex args */}`. Any other arguments are returned as `args`.
+// `/*% name ./contents.typ args %*/`. Any other arguments are returned as `args`.
 const withContentsFile = (
   name: DirectiveName,
   { args, contents, basePath }: DirectiveInput
@@ -65,9 +65,9 @@ const ADD_EXPECTED = "needs at least two context variables to add up";
 
 // Adds up two or more context variables, separated by whitespace, which can be
 // in its arguments, its contents or both (they are joined together):
-// `{* add ITEM_total_due EXPENSE_total_due */}`,
-// `{* add ITEM_total_due *}EXPENSE_total_due{/* add *}` or
-// `{* add *}ITEM_total_due EXPENSE_total_due{/* add *}`. Empty or missing
+// `/*% add ITEM_total_due EXPENSE_total_due %*/`,
+// `/*% add ITEM_total_due >*/EXPENSE_total_due/*< add %*/` or
+// `/*% add >*/ITEM_total_due EXPENSE_total_due/*< add %*/`. Empty or missing
 // variables count as zero, and the total is shown to 2 decimal places.
 const add: Directive = ({
   args = "",

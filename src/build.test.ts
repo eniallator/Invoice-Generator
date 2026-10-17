@@ -10,7 +10,7 @@ const FILES = {
   "main.cfg": lines("[META]", "name=World", "[ITEM_1]", "hrs=2", "rate=5"),
   "templates/template.typ": lines(
     "Hello {{ name }}!",
-    "{* map ./item.typ ITEM */}",
+    "/*% map ./item.typ ITEM %*/",
     "Total: {{ ITEM_total_due }}"
   ),
   "templates/item.typ": "{{ ITEM.id }}={{ ITEM.subtotal }}\n",
@@ -78,7 +78,7 @@ describe("generateTypst", () => {
   });
 
   it("does not write anything if rendering fails", () => {
-    const dir = createFiles({ "main.cfg": "", "t.typ": "{* when x *}" });
+    const dir = createFiles({ "main.cfg": "", "t.typ": "/*% when x >*/" });
     const outPath = join(dir, "out", "out.typ");
     expect(() => {
       generateTypst(join(dir, "main.cfg"), join(dir, "t.typ"), outPath);

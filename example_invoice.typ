@@ -31,7 +31,7 @@
 
 #v(4pt)
 
-#align(center)[#text(size: 14.4pt)[*INVOICE*] \ *Purchase Order: ABC123*]
+#align(center)[#text(size: 14.4pt)[*INVOICE*] \ #strong[Purchase Order: ABC123]]
 
 #v(2pt)
 

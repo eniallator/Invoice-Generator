@@ -5,16 +5,20 @@ import { DIRECTIVES, isDirectiveName } from "./directives.ts";
 
 const VARIABLE_RE = /\{\{\s*([\w.]+)\s*\}\}/g;
 
-// `{* name args *}` opens a block that is closed by `{/* name *}`, whereas
-// `{* name args */}` is self closing.
-// Groups: 1 = name, 2 = args, 3 = "/" if self closing
-const DIRECTIVE_RE = /\{\*\s*(\w+)((?:\s[^*]*)?)\*(\/?)\}/;
+// The tags are block comments, so that a template is still valid Typst wherever
+// they are put. `/*% name args >*/` opens a block that is closed by
+// `/*< name %*/`, whereas `/*% name args %*/` is self closing.
+// Groups: 1 = name, 2 = args, 3 = ">" if it opens a block, "%" if self closing
+const DIRECTIVE_RE = /\/\*%\s*(\w+)((?:\s[^%>]*)?)([%>])\*\//;
 
-// Every opening or closing tag of a directive, in order. Group 1 is "/" for a
-// closing tag. A self closing `*/}` never matches as an opening
+// Group 1 is the name of the directive that the closing tag is for
+const CLOSING_RE = /\/\*<\s*(\w+)\s*%\*\//;
+
+// Every tag that opens or closes a block of the directive, in order. Group 1 is
+// the name for a closing tag. A self closing tag never matches as an opening
 const directiveTagRe = (name: string): RegExp =>
   new RegExp(
-    String.raw`\{(/)\*\s*${name}\s*\*\}|\{\*\s*${name}(?:\s[^*]*)?\*\}`,
+    String.raw`\/\*<\s*(${name})\s*%\*\/|\/\*%\s*${name}(?:\s[^%>]*)?>\*\/`,
     "g"
   );
 
@@ -56,7 +60,7 @@ export class DynamicContentParser {
     match: RegExpExecArray,
     templateContents: string
   ): [replacement: string, end: number] {
-    const [opening, name = "", args = "", selfClosing = ""] = match;
+    const [opening, name = "", args = "", marker = ""] = match;
     if (!isDirectiveName(name)) raise(new Error(`Unknown directive: ${name}`));
 
     const run = (contents: string | undefined) =>
@@ -75,7 +79,7 @@ export class DynamicContentParser {
       });
     const matchEnd = match.index + opening.length;
 
-    if (selfClosing !== "") return [run(undefined), matchEnd];
+    if (marker === "%") return [run(undefined), matchEnd];
 
     const { contentsEnd, end } = findClosingDirective(
       templateContents,
@@ -91,6 +95,14 @@ export class DynamicContentParser {
       const [replacement, end] = this.insertDirective(match, current);
       current =
         current.slice(0, match.index) + replacement + current.slice(end);
+    }
+    const [, unopened] = CLOSING_RE.exec(current) ?? [];
+    if (unopened !== undefined) {
+      raise(
+        new Error(
+          `Found the closing directive for ${unopened}, but not its opening`
+        )
+      );
     }
     return current.replace(VARIABLE_RE, (_match, varId: string) =>
       this.contextVariables.getVariable(varId, this.extra)

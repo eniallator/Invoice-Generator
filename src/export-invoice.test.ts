@@ -8,15 +8,15 @@ import { createFiles, lines } from "./test-helpers.ts";
 
 const TEMPLATE = lines(
   "{{ client }}",
-  "{* map ITEM *}",
+  "/*% map ITEM >*/",
   "{{ ITEM.id }}: {{ ITEM.hrs }} x {{ ITEM.rate }} = {{ ITEM.subtotal }}",
-  "{/* map *}",
+  "/*< map %*/",
   "Total: {{ ITEM_total_due }}",
-  "{* when EXPENSE_total_due *}With expenses: {* add ITEM_total_due EXPENSE_total_due */}{/* when *}"
+  "/*% when EXPENSE_total_due >*/With expenses: /*% add ITEM_total_due EXPENSE_total_due %*//*< when %*/"
 );
 
 const FILES = {
-  "invoice.template.tex": TEMPLATE,
+  "invoice.template.typ": TEMPLATE,
   "defaults.cfg": lines("[META]", "", "client=Jane Roe", "terms=7 days"),
   "janeRoe.2000.04.03.cfg": lines(
     "[META]",
@@ -51,7 +51,7 @@ const setup = () => {
   return {
     dir,
     cfg: join(dir, "janeRoe.2000.04.03.cfg"),
-    template: join(dir, "invoice.template.tex"),
+    template: join(dir, "invoice.template.typ"),
     pdfPath: join(dir, "out", "janeRoe.2000.04.03.pdf"),
     pdfDir: join(dir, "exported", "invoices"),
     cfgDir: join(dir, "exported", "raw_invoices"),
@@ -122,7 +122,7 @@ describe("resolvedConfig", () => {
 
   it("leaves out what the template did not use", () => {
     const { dir, cfg } = setup();
-    const template = join(dir, "client.tex");
+    const template = join(dir, "client.typ");
     writeFileSync(template, "{{ client }}");
     const resolved = resolvedConfig(cfg, template);
     expect(resolved).not.toContain("subtotal=30.00");

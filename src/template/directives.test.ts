@@ -53,9 +53,9 @@ const setupWithFiles = (
 };
 
 const FILES = {
-  "flag.tex": "flag",
-  "my flag.tex": "spaced flag",
-  "sub/nested.tex": "nested",
+  "flag.typ": "flag",
+  "my flag.typ": "spaced flag",
+  "sub/nested.typ": "nested",
 };
 
 describe("DIRECTIVES", () => {
@@ -130,18 +130,18 @@ describe("when", () => {
 
   describe("with a contents file", () => {
     it("takes the first argument as the file and the rest as the variable", () => {
-      const { input, parse, dir } = setupWithFiles("./flag.tex yes", FILES);
+      const { input, parse, dir } = setupWithFiles("./flag.typ yes", FILES);
       expect(DIRECTIVES.when(input)).toBe(`<flag@${dir}>`);
       expect(parse).toHaveBeenCalledExactlyOnceWith("flag", dir, input.extra);
     });
 
     it("does not parse the file if the variable is empty", () => {
-      const { input, parse } = setupWithFiles("./flag.tex no", FILES);
+      const { input, parse } = setupWithFiles("./flag.typ no", FILES);
       expect(DIRECTIVES.when(input)).toBe("");
       expect(parse).not.toHaveBeenCalled();
     });
 
-    it.each([`"./my flag.tex" yes`, `'./my flag.tex' yes`])(
+    it.each([`"./my flag.typ" yes`, `'./my flag.typ' yes`])(
       "supports quoted paths (%s)",
       args => {
         const { input, dir } = setupWithFiles(args, FILES);
@@ -150,19 +150,19 @@ describe("when", () => {
     );
 
     it("parses nested files relative to their own directory", () => {
-      const { input, dir } = setupWithFiles("./sub/nested.tex yes", FILES);
+      const { input, dir } = setupWithFiles("./sub/nested.typ yes", FILES);
       expect(DIRECTIVES.when(input)).toBe(`<nested@${join(dir, "sub")}>`);
     });
 
     it("trims the rest of the arguments", () => {
-      const { input } = setupWithFiles("./flag.tex  \n  yes  ", FILES);
+      const { input } = setupWithFiles("./flag.typ  \n  yes  ", FILES);
       expect(DIRECTIVES.when(input)).toContain("<flag@");
     });
 
     it("throws if the file does not exist", () => {
       expect(() =>
-        DIRECTIVES.when(setupWithFiles("./nope.tex yes", FILES).input)
-      ).toThrow(/Could not find the contents file for when: .*nope\.tex/);
+        DIRECTIVES.when(setupWithFiles("./nope.typ yes", FILES).input)
+      ).toThrow(/Could not find the contents file for when: .*nope\.typ/);
     });
 
     it("throws if there is neither contents nor a file", () => {
@@ -175,7 +175,7 @@ describe("when", () => {
 
     it("still requires the variable", () => {
       expect(() =>
-        DIRECTIVES.when(setupWithFiles("./flag.tex", FILES).input)
+        DIRECTIVES.when(setupWithFiles("./flag.typ", FILES).input)
       ).toThrow("when directive has a single argument");
     });
   });
@@ -216,12 +216,12 @@ describe("unless", () => {
 
   describe("with a contents file", () => {
     it("parses the file if the variable is empty", () => {
-      const { input, dir } = setupWithFiles("./flag.tex no", FILES);
+      const { input, dir } = setupWithFiles("./flag.typ no", FILES);
       expect(DIRECTIVES.unless(input)).toBe(`<flag@${dir}>`);
     });
 
     it("is empty if the variable has a value", () => {
-      const { input, parse } = setupWithFiles("./flag.tex yes", FILES);
+      const { input, parse } = setupWithFiles("./flag.typ yes", FILES);
       expect(DIRECTIVES.unless(input)).toBe("");
       expect(parse).not.toHaveBeenCalled();
     });
@@ -337,7 +337,7 @@ describe("map", () => {
 
   describe("with a contents file", () => {
     it("takes the first argument as the file and the rest as the prefix", () => {
-      const { input, parse, dir } = setupWithFiles("./flag.tex ITEM", FILES);
+      const { input, parse, dir } = setupWithFiles("./flag.typ ITEM", FILES);
       expect(DIRECTIVES.map(input)).toBe(`<flag@${dir}><flag@${dir}>`);
       expect(parse).toHaveBeenCalledTimes(2);
       expect(
@@ -346,7 +346,7 @@ describe("map", () => {
     });
 
     it("keeps the outer extra context", () => {
-      const { input, parse } = setupWithFiles("./flag.tex ITEM", FILES);
+      const { input, parse } = setupWithFiles("./flag.typ ITEM", FILES);
       const outer = new Map([["OUTER", new Map<string, string>()]]);
       DIRECTIVES.map({ ...input, extra: outer });
       expect([...(parse.mock.calls[0]?.[2].keys() ?? [])]).toEqual([
@@ -357,13 +357,13 @@ describe("map", () => {
 
     it("still requires the prefix", () => {
       expect(() =>
-        DIRECTIVES.map(setupWithFiles("./flag.tex", FILES).input)
+        DIRECTIVES.map(setupWithFiles("./flag.typ", FILES).input)
       ).toThrow("map directive has a single argument");
     });
 
     it("throws if the file does not exist", () => {
       expect(() =>
-        DIRECTIVES.map(setupWithFiles("./nope.tex ITEM", FILES).input)
+        DIRECTIVES.map(setupWithFiles("./nope.typ ITEM", FILES).input)
       ).toThrow(/Could not find the contents file for map/);
     });
   });

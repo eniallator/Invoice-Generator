@@ -173,7 +173,9 @@ If the parser cannot find a specific context variable, it will replace the varia
 
 ### Map Directive
 
-Directives have two forms. The first is a block, `{* name args *}contents{/* name *}`, where `name` is the name of the directive, `args` is everything after the name (it is optional for some directives) and the contents are everything between the opening and closing tags (the closing tag must have the same name). The second is self closing, `{* name args */}`, which has no contents.
+Directives have two forms. The first is a block, `/*% name args >*/contents/*< name %*/`, where `name` is the name of the directive, `args` is everything after the name (it is optional for some directives) and the contents are everything between the opening and closing tags (the closing tag must have the same name). The second is self closing, `/*% name args %*/`, which has no contents. The `>` points at the contents that follow the opening tag, and the `<` points back at the contents that came before the closing tag.
+
+The tags are Typst block comments, so a template is still valid Typst wherever they are put (even inside a function's arguments, where Typst would not accept anything else), and editors will not report errors for them. Only a comment that starts with `/*%` is a directive, so ordinary comments are left alone.
 
 Some directives (`map`, `when` and `unless`) can also take their contents from another file. For these, use the self closing form where the first argument is the path of the file, followed by the directive's other arguments. Relative paths are resolved from the file that the directive is in, and paths can be quoted with `"` or `'` if they contain spaces.
 
@@ -198,7 +200,7 @@ invoice template:
 ```typst
 Invoice Items:
 ID, hrs, rate, subtotal
-{* map ./invoice_item.typ ITEM */}
+/*% map ./invoice_item.typ ITEM %*/
 Total: {{ ITEM_total_due }}
 ```
 
@@ -224,7 +226,7 @@ Everything else stays available inside the contents too: the group's variables (
 
 Instead of using a contents file, the contents can be written between the opening and closing tags. Any contents in between the tags will then be parsed and replaced by the directive's output.
 
-The inline directive syntax is as follows: `{* name args *}...{/* name *}`. One note is that the name has to be the same as the name in the opening tag.
+The inline directive syntax is as follows: `/*% name args >*/.../*< name %*/`. One note is that the name has to be the same as the name in the opening tag.
 
 All directives will be executed in the order that they appear. This means that any context from outer directives will be taken into account (e.g. the `ITEM` context variable can then be used alongside the `when` directive to achieve some pretty complex situations)
 
@@ -248,8 +250,8 @@ With the following invoice template:
 
 ```typst
 Invoice Items:
-ID, hrs, rate, subtotal{* map ITEM *}
-{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{/* map *}
+ID, hrs, rate, subtotal/*% map ITEM >*/
+{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}/*< map %*/
 Total: {{ ITEM_total_due }}
 ```
 
@@ -291,10 +293,10 @@ With the following template:
 
 ```typst
 Invoice Items:
-ID, hrs, rate, subtotal{* when ITEM_total_recurring_due *}, Recurring{/* when *}{* map ITEM *}
-{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* when ITEM_total_recurring_due *}, {{ITEM.recurring}}{/* when *}{/* map *}
-Total: {{ ITEM_total_due }}{* when ITEM_total_recurring_due *}
-Total Recurring: {{ITEM_total_recurring_due}}{/* when *}
+ID, hrs, rate, subtotal/*% when ITEM_total_recurring_due >*/, Recurring/*< when %*//*% map ITEM >*/
+{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}/*% when ITEM_total_recurring_due >*/, {{ITEM.recurring}}/*< when %*//*< map %*/
+Total: {{ ITEM_total_due }}/*% when ITEM_total_recurring_due >*/
+Total Recurring: {{ITEM_total_recurring_due}}/*< when %*/
 ```
 
 Will generate:
@@ -353,9 +355,9 @@ price=10
 All of these templates:
 
 ```typst
-Total: {* add ITEM_total_due EXPENSE_total_due */}
-Total: {* add ITEM_total_due *}EXPENSE_total_due{/* add *}
-Total: {* add *}ITEM_total_due EXPENSE_total_due{/* add *}
+Total: /*% add ITEM_total_due EXPENSE_total_due %*/
+Total: /*% add ITEM_total_due >*/EXPENSE_total_due/*< add %*/
+Total: /*% add >*/ITEM_total_due EXPENSE_total_due/*< add %*/
 ```
 
 Will generate:

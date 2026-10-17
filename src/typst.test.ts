@@ -13,7 +13,7 @@ describe("pdfPathFor", () => {
   });
 
   it("never makes the typst file's own path, whatever it is called", () => {
-    expect(pdfPathFor("./out/invoice.tex")).toBe("./out/invoice.pdf");
+    expect(pdfPathFor("./out/invoice.txt")).toBe("./out/invoice.pdf");
     expect(pdfPathFor("./out/invoice")).toBe("./out/invoice.pdf");
     expect(pdfPathFor("./out.dir/invoice")).toBe("./out.dir/invoice.pdf");
   });

@@ -228,7 +228,7 @@ describe("invoice_template.typ", () => {
   describe("subheading", () => {
     it("is shown when there is one", () => {
       expect(invoice("[META]", "invoice_subheading=PO 123")).toContain(
-        "*INVOICE*] \\ *PO 123*"
+        "*INVOICE*] \\ #strong[PO 123]"
       );
     });
 
