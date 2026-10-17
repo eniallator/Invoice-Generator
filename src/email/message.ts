@@ -18,7 +18,9 @@ export const parseEmail = (
   if (subject === "") {
     raise(
       new Error(
-        `The email template must start with a line like '${SUBJECT_PREFIX} Invoice {{ invoice_id }}'`
+        `The email template must start with a line like '${
+          SUBJECT_PREFIX
+        } Invoice {{ invoice_id }}'`
       )
     );
   }

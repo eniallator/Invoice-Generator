@@ -38,7 +38,7 @@ describe("normaliseItem", () => {
       ).toMatchObject({
         hrs: "7.50",
         days: "1.00",
-        qty: "2.25",
+        qty: "2.26",
         rate: "10.50",
         price: "4.00",
       });

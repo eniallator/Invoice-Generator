@@ -3,7 +3,7 @@ import { raise } from "niall-utils";
 
 import { isFile, parseItemPath, readText } from "../io.ts";
 import { formatFixed2, parseFloatStrict } from "../numbers.ts";
-import type { ContextVariables, Extra, Item } from "./context-variables.ts";
+import type { ContextVariables, Extra } from "./context-variables.ts";
 
 export interface DirectiveInput {
   /** Everything after the directive's name, trimmed, or undefined if there is nothing */
@@ -78,9 +78,8 @@ const add: Directive = ({
   const variables = `${args} ${contents}`
     .split(/\s+/)
     .filter(variable => variable !== "");
-  if (variables.length < 2) {
-    raise(new Error(`add directive ${ADD_EXPECTED}`));
-  }
+  if (variables.length < 2) raise(new Error(`add directive ${ADD_EXPECTED}`));
+
   return formatFixed2(
     variables
       .map(variable => contextVariables.getVariable(variable, extra))
@@ -106,7 +105,7 @@ const map: Directive = input => {
       input.parse(
         contents,
         contentsPath,
-        new Map<string, Item>([...input.extra, [prefix, item]])
+        new Map([...input.extra, [prefix, item]])
       )
     )
     .join("");

@@ -10,12 +10,13 @@ const VARIABLE_RE = /\{\{\s*([\w.]+)\s*\}\}/g;
 // Groups: 1 = name, 2 = args, 3 = "/" if self closing
 const DIRECTIVE_RE = /\{\*\s*(\w+)((?:\s[^*]*)?)\*(\/?)\}/;
 
-// Only block openings: a self closing `*/}` never matches
-const openingDirectiveRe = (name: string): RegExp =>
-  new RegExp(String.raw`\{\*\s*${name}(?:\s[^*]*)?\*\}`, "g");
-
-const closingDirectiveRe = (name: string): RegExp =>
-  new RegExp(String.raw`\{/\*\s*${name}\s*\*\}`);
+// Every opening or closing tag of a directive, in order. Group 1 is "/" for a
+// closing tag. A self closing `*/}` never matches as an opening
+const directiveTagRe = (name: string): RegExp =>
+  new RegExp(
+    String.raw`\{(/)\*\s*${name}\s*\*\}|\{\*\s*${name}(?:\s[^*]*)?\*\}`,
+    "g"
+  );
 
 /** Finds the end of the contents and of the closing tag, skipping nested directives of the same name */
 const findClosingDirective = (
@@ -23,24 +24,17 @@ const findClosingDirective = (
   name: string,
   contentsStart: number
 ): { contentsEnd: number; end: number } => {
-  const closingRe = closingDirectiveRe(name);
   let depth = 1;
-  let searchFrom = contentsStart;
-  for (;;) {
-    const close =
-      closingRe.exec(template.slice(searchFrom)) ??
-      raise(new Error(`Could not find the closing directive for ${name}`));
-    const closeStart = searchFrom + close.index;
-    const closeEnd = closeStart + close[0].length;
-    const nestedOpenings = [
-      ...template
-        .slice(searchFrom, closeStart)
-        .matchAll(openingDirectiveRe(name)),
-    ].length;
-    depth += nestedOpenings - 1;
-    if (depth <= 0) return { contentsEnd: closeStart, end: closeEnd };
-    searchFrom = closeEnd;
+  for (const tag of template
+    .slice(contentsStart)
+    .matchAll(directiveTagRe(name))) {
+    depth += tag[1] === undefined ? 1 : -1;
+    if (depth === 0) {
+      const contentsEnd = contentsStart + tag.index;
+      return { contentsEnd, end: contentsEnd + tag[0].length };
+    }
   }
+  return raise(new Error(`Could not find the closing directive for ${name}`));
 };
 
 export class DynamicContentParser {
@@ -63,9 +57,8 @@ export class DynamicContentParser {
     templateContents: string
   ): [replacement: string, end: number] {
     const [opening, name = "", args = "", selfClosing = ""] = match;
-    if (!isDirectiveName(name)) {
-      raise(new Error(`Unknown directive: ${name}`));
-    }
+    if (!isDirectiveName(name)) raise(new Error(`Unknown directive: ${name}`));
+
     const run = (contents: string | undefined) =>
       DIRECTIVES[name]({
         args: args.trim() === "" ? undefined : args.trim(),

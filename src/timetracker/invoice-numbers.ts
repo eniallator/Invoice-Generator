@@ -33,10 +33,10 @@ export const incrementInvoiceId = (id: string): string => {
   if (digits === "") {
     raise(new Error(`Invoice id '${id}' does not end in a number`));
   }
-  return `${id.slice(
-    0,
-    id.length - digits.length
-  )}${String(Number(digits) + 1).padStart(digits.length, "0")}`;
+  return [
+    id.slice(0, id.length - digits.length),
+    String(Number(digits) + 1).padStart(digits.length, "0"),
+  ].join("");
 };
 
 const numberOf = (id: string): number => Number(trailingDigits(id));

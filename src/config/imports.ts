@@ -48,7 +48,8 @@ export const loadConfig = (basePath: string): Config => {
   if (erroredImports.size > 0) {
     raise(
       new Error(
-        `Could not import the following config files:\n${[...erroredImports].join("\n")}`
+        "Could not import the following config files:\n" +
+          [...erroredImports].join("\n")
       )
     );
   }

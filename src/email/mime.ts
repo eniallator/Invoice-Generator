@@ -59,18 +59,18 @@ const textPart = (body: string): string[] => [
   base64Lines(Buffer.from(body.replaceAll(/\r?\n/g, CRLF))),
 ];
 
-const attachmentPart = ({
-  filename,
-  contentType,
-  data,
-}: Attachment): string[] => {
+const attachmentPart = (attach: Attachment): string[] => {
+  const { filename, contentType, data } = attach;
   // Keeps the name to plain ASCII so that it never needs encoding
   const name = singleLine("The attachment's name", filename).replaceAll(
     /[^\w. -]/g,
     "_"
   );
   return [
-    `Content-Type: ${singleLine("The attachment's type", contentType)}; name="${name}"`,
+    `Content-Type: ${singleLine(
+      "The attachment's type",
+      contentType
+    )}; name="${name}"`,
     "Content-Transfer-Encoding: base64",
     `Content-Disposition: attachment; filename="${name}"`,
     "",

@@ -123,7 +123,11 @@ export const createDrafts = (options: DraftOptions): DraftResult[] => {
   if (options.invoiceId !== undefined && names.length > 1) {
     raise(
       new Error(
-        `An invoice id is for a single invoice but ${names.length} clients have something to bill (${names.join(", ")}), so choose one with --client`
+        `An invoice id is for a single invoice but ${
+          names.length
+        } clients have something to bill (${names.join(
+          ", "
+        )}), so choose one with --client`
       )
     );
   }
@@ -134,7 +138,9 @@ export const createDrafts = (options: DraftOptions): DraftResult[] => {
     if (client === undefined) {
       return skipped(
         name,
-        `there is no matching config in ${options.clientsDir} (add one, or set timetracker_client=${name} in an existing one)`
+        `there is no matching config in ${
+          options.clientsDir
+        } (add one, or set timetracker_client=${name} in an existing one)`
       );
     }
 

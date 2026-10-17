@@ -14,14 +14,11 @@ interface Group {
   values: Item;
 }
 
-const groupValues = (
-  rawItems: readonly Item[],
-  items: readonly Item[]
-): Item => {
+const groupValues = (raw: readonly Item[], items: readonly Item[]): Item => {
   if (items.length === 0) return new Map();
   const totalRecurring = sumOption(items, "recurring");
   return new Map([
-    ...mergeItems(rawItems),
+    ...mergeItems(raw),
     ["total_due", formatFixed2(sumOption(items, "subtotal"))],
     [
       "total_recurring_due",

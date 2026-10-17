@@ -77,7 +77,9 @@ if (results.length === 0) console.log("Nothing to draft");
 for (const result of results) {
   console.log(
     result.kind === "created"
-      ? `${result.client}: wrote ${result.path} (${result.invoiceId}${result.idSource === "new" ? "" : `, ${result.idSource}`}, ${result.hours} hrs in ${result.items} items, ${result.expenses} expenses)`
+      ? `${result.client}: wrote ${result.path} (${result.invoiceId}${
+          result.idSource === "new" ? "" : `, ${result.idSource}`
+        }, ${result.hours} hrs in ${result.items} items, ${result.expenses} expenses)`
       : `${result.client}: skipped, ${result.reason}`
   );
 }

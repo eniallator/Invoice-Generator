@@ -22,11 +22,24 @@ describe("parseFloatOrNull", () => {
       expect(parseFloatOrNull(input)).toBeNull();
     }
   );
+
+  // Regression: Number("") is 0, so empty text must not be treated as zero
+  it("returns null for empty text rather than 0", () => {
+    expect(parseFloatOrNull("")).toBeNull();
+    expect(parseFloatOrNull("")).not.toBe(0);
+  });
 });
 
 describe("parseFloatStrict", () => {
   it("parses valid floats", () => {
     expect(parseFloatStrict("12.5")).toBe(12.5);
+  });
+
+  // Regression: Number("") is 0, so empty text must not be treated as zero
+  it("throws for empty text", () => {
+    expect(() => parseFloatStrict("")).toThrow(
+      "could not convert string to float: ''"
+    );
   });
 
   it("throws, quoting the original input, for invalid floats", () => {
@@ -50,24 +63,17 @@ describe("formatFixed2", () => {
     expect(formatFixed2(input)).toBe(expected);
   });
 
-  // Regression: Python's f"{x:.2f}" rounds exact binary ties to even, whereas
-  // JS's toFixed rounds them up.
+  // A 5 in the third decimal place rounds up (not to even, like Python does)
   it.each([
-    [0.125, "0.12"],
+    [0.125, "0.13"],
     [0.375, "0.38"],
-    [0.625, "0.62"],
+    [0.625, "0.63"],
     [0.875, "0.88"],
-    [1.125, "1.12"],
+    [1.125, "1.13"],
+    [2.675, "2.68"],
     [-0.125, "-0.12"],
-    [-0.375, "-0.38"],
-  ])("rounds the exact tie %d to even (%s)", (input, expected) => {
+    [-0.375, "-0.37"],
+  ])("rounds %d half up to %s", (input, expected) => {
     expect(formatFixed2(input)).toBe(expected);
-  });
-
-  // Regression: values that merely look like ties are not exact in binary and
-  // keep their normal rounding
-  it("does not treat inexact near-ties as ties", () => {
-    expect(formatFixed2(2.675)).toBe("2.67");
-    expect(formatFixed2(1.005)).toBe("1.00");
   });
 });

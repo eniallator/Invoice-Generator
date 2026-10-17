@@ -1,4 +1,4 @@
-import { attempt, raise } from "niall-utils";
+import { attempt, raise, tuple } from "niall-utils";
 
 import { readText } from "../io.ts";
 import { parseFloatStrict } from "../numbers.ts";
@@ -77,19 +77,13 @@ const parseIni = (
 
   const finalise = (raw: Map<string, string[]>): Section =>
     new Map(
-      [...raw].map(([key, lines]): [string, string] => [
-        key,
-        lines.join("\n").trimEnd(),
-      ])
+      [...raw].map(([key, lines]) => tuple(key, lines.join("\n").trimEnd()))
     );
 
   return {
     defaults: finalise(rawDefaults),
     sections: new Map(
-      [...rawSections].map(([name, raw]): [string, Section] => [
-        name,
-        finalise(raw),
-      ])
+      [...rawSections].map(([name, raw]) => tuple(name, finalise(raw)))
     ),
   };
 };

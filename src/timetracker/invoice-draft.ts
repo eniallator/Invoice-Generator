@@ -18,14 +18,14 @@ export interface DraftExpense {
 }
 
 const ORDINAL_RULES = new Intl.PluralRules("en-US", { type: "ordinal" });
-const ORDINAL_SUFFIXES: Record<Intl.LDMLPluralRule, string> = {
+const ORDINAL_SUFFIXES = {
   zero: "th",
   one: "st",
   two: "nd",
   few: "rd",
   many: "th",
   other: "th",
-};
+} as const satisfies Record<Intl.LDMLPluralRule, string>;
 
 /**
  * The item id for a day, e.g. ` 1st Sep` (and ` 1st Sep (pt 2)` for the second

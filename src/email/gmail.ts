@@ -96,7 +96,9 @@ const requestToken = async <T>(
   if (!response.ok) {
     raise(
       new Error(
-        `Google refused the token request (${response.status}): ${JSON.stringify(data)}`
+        `Google refused the token request (${
+          response.status
+        }): ${JSON.stringify(data)}`
       )
     );
   }
