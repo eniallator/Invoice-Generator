@@ -9,13 +9,11 @@ Arguments:
   cfg                    Config file to fill the invoice out with
 
 Options:
-  -t, --template <path>  LaTeX template file to use with the config variables
-  -o, --out-path <path>  Output .tex path where to generate the auxiliary/tex/pdf
-                         files. Use SAME to make the same as the config file name
-                         (default: SAME)
+  -t, --template <path>  Typst template file to use with the config variables
+  -o, --out-path <path>  Output .typ path where to generate the typst source,
+                         with the pdf made next to it. Use SAME to make the
+                         same as the config file name (default: SAME)
   -q, --quote            In quote mode or not
-  -k, --keep-aux         Keep the auxiliary files (.aux, .log etc.) that latexmk
-                         makes, instead of removing them once the pdf is built
   -h, --help             Show this help`;
 
 export interface PathOptions {
@@ -32,13 +30,13 @@ export const resolvePaths = ({
   quote,
 }: PathOptions): { template: string; outPath: string } => {
   const cfgStem = basename(cfg).split(".").slice(0, -1).join(".");
-  const defaultOutPath = quote ? "./out/quote.tex" : "./out/invoice.tex";
+  const defaultOutPath = quote ? "./out/quote.typ" : "./out/invoice.typ";
   return {
     template:
-      template ?? (quote ? "./quote_template.tex" : "./invoice_template.tex"),
+      template ?? (quote ? "./quote_template.typ" : "./invoice_template.typ"),
     outPath:
       outPath === "SAME"
-        ? `./out/${cfgStem}.tex`
+        ? `./out/${cfgStem}.typ`
         : outPath === ""
           ? defaultOutPath
           : outPath,
@@ -51,7 +49,6 @@ export type CliResult =
       cfg: string;
       template: string;
       outPath: string;
-      keepAux: boolean;
     }
   | { kind: "exit"; message: string; exitCode: number };
 
@@ -63,7 +60,6 @@ const parse = (argv: string[]) =>
       template: { type: "string", short: "t" },
       "out-path": { type: "string", short: "o", default: "SAME" },
       quote: { type: "boolean", short: "q", default: false },
-      "keep-aux": { type: "boolean", short: "k", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -83,7 +79,6 @@ export const parseCli = (argv: string[]): CliResult => {
     return {
       kind: "run",
       cfg,
-      keepAux: values["keep-aux"],
       ...resolvePaths({
         cfg,
         template: values.template,

@@ -2,4 +2,4 @@ coverage
 dist
 out
 pnpm-lock.yaml
-*.tex
+*.typ

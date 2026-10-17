@@ -670,7 +670,7 @@ describe("createDrafts", () => {
           "invoice_terms=7 days",
           "",
           "[PAYMENT]",
-          "currency=\\pounds"
+          "currency=£"
         ),
       });
       expect(
@@ -682,10 +682,10 @@ describe("createDrafts", () => {
 
       const invoice = renderTemplate(
         join(dir, "raw", JANE_DRAFT),
-        join(root, "invoice_template.tex")
+        join(root, "invoice_template.typ")
       );
       // 16 hours at 50 plus the 10 expense
-      expect(invoice).toContain("\\large{\\pounds810.00}");
+      expect(invoice).toContain("#total[£810.00]");
       expect(invoice).toContain("Consulting");
       expect(invoice).toContain("Domain");
       expect(invoice).toContain("AB0042");

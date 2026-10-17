@@ -37,26 +37,24 @@ pnpm install
 pnpm generate ./raw_invoices/johnDoe.2000.01.01.cfg
 ```
 
-This needs Node.js 25.4 or newer, as well as `latexmk` to build the pdf.
+This needs Node.js 25.4 or newer. The pdf is built by [Typst](https://typst.app/), using the `@myriaddreamin/typst-ts-node-compiler` package, which works on every platform, so there is nothing else to install.
 
 The following arguments exist:
 
 - `cfg` (positional)
   - The config file entry point to get all the context variables from
 - `--template`/`-t`
-  - The template file to use (can in reality be any extension/file type, but this uses LaTeX). This defaults to `./invoice_template.tex`
+  - The template file to use (can in reality be any extension/file type, but this uses Typst). This defaults to `./invoice_template.typ`
 - `--out-path`/`-o`
-  - The output destination for all the auxiliary files as well as the output pdf that `latexmk` creates. This defaults to `SAME`, which names it after the config file (e.g. `./out/johnDoe.2000.01.01.tex`)
+  - The output destination for the filled out Typst file. The pdf that Typst makes from it goes next to it. This defaults to `SAME`, which names it after the config file (e.g. `./out/johnDoe.2000.01.01.typ`)
 - `--quote`/`-q`
-  - Alias for setting the default template to `./quote_template.tex`. So if the template is provided, the given parameter overrides this option.
-- `--keep-aux`/`-k`
-  - Keep the auxiliary files that `latexmk` makes (`.aux`, `.log`, `.synctex.gz` etc.). By default these are removed once the pdf is built, leaving just the `.tex` and the pdf.
+  - Alias for setting the default template to `./quote_template.typ`. So if the template is provided, the given parameter overrides this option.
 
-To rebuild the example `.tex` and pdf files, run `pnpm regenerate-examples`.
+To rebuild the example `.typ` and pdf files, run `pnpm regenerate-examples`.
 
 ## How It Works
 
-If you like the look of the [example invoice pdf](./example_invoice.pdf) or the [example invoice LaTeX](./example_invoice.tex), the way that it is generated is using the [invoice template](./invoice_template.tex).
+If you like the look of the [example invoice pdf](./example_invoice.pdf) or the [example invoice Typst](./example_invoice.typ), the way that it is generated is using the [invoice template](./invoice_template.typ).
 
 These templates are then filled out with context variables starting from the [example invoice config](./raw_invoices/johnDoe.2000.01.01.cfg). This then also imports the [example client](./clients/johnDoe.cfg) and the [example my_info config](./my_info.cfg).
 
@@ -65,6 +63,13 @@ This generator also works with creating quotes! See all the quote counterpart ex
 ## Config Files
 
 Config files use the properties syntax as described in the [configparser documentation](https://docs.python.org/3/library/configparser.html#supported-ini-file-structure).
+
+The values are put into the templates as they are, so with the Typst templates they are Typst markup. In particular:
+
+- A line break is a backslash followed by a space, e.g. `address=1 Road,\ Town\ County`.
+- `@` starts a reference in Typst, so write email addresses as `jane\@example.com`.
+- Other characters that Typst uses (such as `#`, `$` and `*`) need a backslash in front of them to be shown as they are.
+- Symbols like the currency can be written as they are, e.g. `currency=£`.
 
 ### Importing Other Config Files
 
@@ -139,8 +144,8 @@ Template files can have context variables inserted (from the config files).
 
 These have the following format: `{{ section.option }}` and can be inserted anywhere inside the file. The other format you can use is `{{ option }}`, where the section is implicitly set to `META`. For example:
 
-```LaTeX
-\underline{INV DATE} {{ invoice_date }}
+```typst
+#underline[INV DATE] {{ invoice_date }}
 Pay to: {{ PAYMENT.account_name }}
 ```
 
@@ -156,10 +161,10 @@ invoice_date=2000/01/01
 account_name=John Doe
 ```
 
-will generate the following LaTeX:
+will generate the following Typst:
 
-```LaTeX
-\underline{INV DATE} 2000/01/01
+```typst
+#underline[INV DATE] 2000/01/01
 Pay to: John Doe
 ```
 
@@ -190,22 +195,22 @@ rate=3
 
 invoice template:
 
-```LaTeX
+```typst
 Invoice Items:
 ID, hrs, rate, subtotal
-{* map ./invoice_item.tex ITEM */}
+{* map ./invoice_item.typ ITEM */}
 Total: {{ ITEM_total_due }}
 ```
 
-./invoice_item.tex
+./invoice_item.typ
 
-```LaTeX
+```typst
 {{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}
 ```
 
 Will all generate:
 
-```LaTeX
+```typst
 Invoice Items:
 ID, hrs, rate, subtotal
 1, 5, 6.00, 30.00
@@ -241,7 +246,7 @@ rate=3
 
 With the following invoice template:
 
-```LaTeX
+```typst
 Invoice Items:
 ID, hrs, rate, subtotal{* map ITEM *}
 {{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{/* map *}
@@ -250,7 +255,7 @@ Total: {{ ITEM_total_due }}
 
 Will generate the same output as above:
 
-```LaTeX
+```typst
 Invoice Items:
 ID, hrs, rate, subtotal
 1, 5, 6.00, 30.00
@@ -284,7 +289,7 @@ recurring=40
 
 With the following template:
 
-```LaTeX
+```typst
 Invoice Items:
 ID, hrs, rate, subtotal{* when ITEM_total_recurring_due *}, Recurring{/* when *}{* map ITEM *}
 {{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}{* when ITEM_total_recurring_due *}, {{ITEM.recurring}}{/* when *}{/* map *}
@@ -294,7 +299,7 @@ Total Recurring: {{ITEM_total_recurring_due}}{/* when *}
 
 Will generate:
 
-```LaTeX
+```typst
 Invoice Items:
 ID, hrs, rate, subtotal, Recurring
 1, 5, 6.00, 30.00, 40.00
@@ -319,7 +324,7 @@ rate=3
 
 The following will be generated (using the same template):
 
-```LaTeX
+```typst
 Invoice Items:
 ID, hrs, rate, subtotal
 1, 5, 6.00, 30.00
@@ -347,7 +352,7 @@ price=10
 
 All of these templates:
 
-```LaTeX
+```typst
 Total: {* add ITEM_total_due EXPENSE_total_due */}
 Total: {* add ITEM_total_due *}EXPENSE_total_due{/* add *}
 Total: {* add *}ITEM_total_due EXPENSE_total_due{/* add *}
@@ -355,7 +360,7 @@ Total: {* add *}ITEM_total_due EXPENSE_total_due{/* add *}
 
 Will generate:
 
-```LaTeX
+```typst
 Total: 50.00
 Total: 50.00
 Total: 50.00

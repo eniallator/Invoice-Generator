@@ -16,6 +16,7 @@
     "niall-utils"
   ],
   "dependencies": {
+    "@myriaddreamin/typst-ts-node-compiler": "^0.7.0",
     "deep-guards": "^1.4.0",
     "method-monitor": "^1.0.0",
     "niall-utils": "^4.0.0"

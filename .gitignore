@@ -4,7 +4,6 @@ raw_invoices
 raw_quotes
 me
 invoices
-rendered_invoice.tex
 .tmp.driveupload
 .tmp.drivedownload
 node_modules

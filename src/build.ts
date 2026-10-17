@@ -15,7 +15,7 @@ export const renderTemplate = (
     readText(template)
   );
 
-export const generateTex = (
+export const generateTypst = (
   cfg: string,
   template: string,
   outPath: string

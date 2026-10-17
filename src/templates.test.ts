@@ -10,14 +10,10 @@ import { readText } from "./io.ts";
 import { lines, render } from "./test-helpers.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const INVOICE = readText(join(root, "invoice_template.tex"));
-const QUOTE = readText(join(root, "quote_template.tex"));
+const INVOICE = readText(join(root, "invoice_template.typ"));
+const QUOTE = readText(join(root, "quote_template.typ"));
 
-const PAYMENT = lines(
-  "[PAYMENT]",
-  "currency=\\pounds",
-  "account_name=Account Name"
-);
+const PAYMENT = lines("[PAYMENT]", "currency=£", "account_name=Account Name");
 
 const invoice = (...sections: string[]) =>
   render(
@@ -53,15 +49,16 @@ const quote = (...sections: string[]) =>
     )
   );
 
-const ITEM_TABLE = "\\bf{ITEM}";
-const EXPENSE_TABLE = "\\bf{EXPENSE}";
+const ITEM_TABLE = "head[ITEM]";
+const EXPENSE_TABLE = "head[EXPENSE]";
+const TOTAL = "#total[£";
 
-describe("invoice_template.tex", () => {
+describe("invoice_template.typ", () => {
   it("fills in the parties and payment details", () => {
     const result = invoice();
-    expect(result).toContain("\\textbf{Me}");
+    expect(result).toContain("*Me*");
     expect(result).toContain(
-      "1 Road\\\\Attention: Jane Client\\\\jane@example.com"
+      "1 Road \\ Attention: Jane Client \\ jane@example.com"
     );
     expect(result).toContain("Account Name: Account Name");
   });
@@ -84,7 +81,7 @@ describe("invoice_template.tex", () => {
 
     it("shows the bank address straight after the bank when there is one", () => {
       expect(withPayment("bank_address=2 Road")).toContain(
-        "Bank: B\\\\Bank Address: 2 Road"
+        "Bank: B \\ Bank Address: 2 Road"
       );
     });
 
@@ -107,26 +104,26 @@ describe("invoice_template.tex", () => {
 
     it("shows the item table with each item", () => {
       expect(result).toContain(ITEM_TABLE);
-      expect(result).toMatch(/1\s*&\s*Work/);
-      expect(result).toMatch(/2\s*&\s*More work/);
+      expect(result).toContain("[1], [Work]");
+      expect(result).toContain("[2], [More work]");
     });
 
     it("shows each item's formatted rate and subtotal", () => {
-      expect(result).toMatch(/5\s*&\s*\\pounds6\.00\s*&\s*\\pounds30\.00/);
-      expect(result).toMatch(/2\s*&\s*\\pounds3\.00\s*&\s*\\pounds6\.00/);
+      expect(result).toContain("[5], [£6.00], [£30.00]");
+      expect(result).toContain("[2], [£3.00], [£6.00]");
     });
 
     it("puts the currency on each subtotal, not in the heading", () => {
-      expect(result).toContain("\\bf SUB TOTAL ");
+      expect(result).toContain("head[SUB TOTAL]");
       expect(result).not.toContain("SUB TOTAL(");
     });
 
     it("left aligns the text columns and right aligns the numeric columns", () => {
-      expect(result).toContain("{l X r r r}");
+      expect(result).toContain("align: (left, left, right, right, right)");
     });
 
     it("totals the items in the item table", () => {
-      expect(result).toContain("\\large{\\pounds36.00}");
+      expect(result).toContain("#total[£36.00]");
     });
 
     it("has no expense table", () => {
@@ -153,9 +150,9 @@ describe("invoice_template.tex", () => {
     });
 
     it("only shows the combined total, in the expense table", () => {
-      expect(result).toContain("\\large{\\pounds50.00}");
-      expect(result).not.toContain("\\large{\\pounds30.00}");
-      expect(result.match(/\\large\{\\pounds/g)).toHaveLength(1);
+      expect(result).toContain("#total[£50.00]");
+      expect(result).not.toContain("#total[£30.00]");
+      expect(result.match(/#total\[£/g)).toHaveLength(1);
     });
   });
 
@@ -165,12 +162,12 @@ describe("invoice_template.tex", () => {
     it("has no item table, and the expenses make up the total", () => {
       expect(result).not.toContain(ITEM_TABLE);
       expect(result).toContain(EXPENSE_TABLE);
-      expect(result).toContain("\\large{\\pounds15.00}");
+      expect(result).toContain("#total[£15.00]");
     });
 
     it("leaves out the columns that no expense uses", () => {
-      expect(result).not.toContain("\\bf{QTY}");
-      expect(result).not.toContain("\\bf{RATE}");
+      expect(result).not.toContain("head[QTY]");
+      expect(result).not.toContain("head[RATE]");
     });
   });
 
@@ -180,23 +177,23 @@ describe("invoice_template.tex", () => {
     it("shows neither table", () => {
       expect(result).not.toContain(ITEM_TABLE);
       expect(result).not.toContain(EXPENSE_TABLE);
-      expect(result).not.toContain("\\large{\\pounds");
+      expect(result).not.toContain(TOTAL);
     });
   });
 
   describe("columns", () => {
     it("shows the hours and rate columns when items use them", () => {
       const result = invoice("[ITEM_1]", "hrs=5", "rate=6");
-      expect(result).toContain("\\bf{HRS}");
-      expect(result).toContain("\\bf{RATE/HR}");
-      expect(result).not.toContain("\\bf{DAYS}");
+      expect(result).toContain("head[HRS]");
+      expect(result).toContain("head[RATE/HR]");
+      expect(result).not.toContain("head[DAYS]");
     });
 
     it("shows the days column when items use it", () => {
       const result = invoice("[ITEM_1]", "days=2", "rate=100");
-      expect(result).toContain("\\bf{DAYS}");
-      expect(result).not.toContain("\\bf{HRS}");
-      expect(result).toContain("\\large{\\pounds200.00}");
+      expect(result).toContain("head[DAYS]");
+      expect(result).not.toContain("head[HRS]");
+      expect(result).toContain("#total[£200.00]");
     });
 
     it("shows a column if any one item uses it", () => {
@@ -208,38 +205,45 @@ describe("invoice_template.tex", () => {
         "days=2",
         "rate=100"
       );
-      expect(result).toContain("\\bf{HRS}");
-      expect(result).toContain("\\bf{DAYS}");
-      expect(result).toContain("\\large{\\pounds230.00}");
+      expect(result).toContain("head[HRS]");
+      expect(result).toContain("head[DAYS]");
+      expect(result).toContain("#total[£230.00]");
     });
 
     it("shows the quantity and rate columns for expenses that use them", () => {
       const result = invoice("[EXPENSE_1]", "qty=2", "price=10", "rate=10");
-      expect(result).toContain("\\bf{QTY}");
-      expect(result).toContain("\\bf{RATE}");
-      expect(result).toMatch(/2\s*&\s*\\pounds10\.00\s*&\s*\\pounds20\.00/);
+      expect(result).toContain("head[QTY]");
+      expect(result).toContain("head[RATE]");
+      expect(result).toContain("[2], [£10.00], [£20.00]");
+    });
+
+    it("does not show a currency on its own where there is no rate", () => {
+      const result = invoice("[ITEM_1]", "description=Work", "subtotal=10");
+      expect(result).not.toContain("head[RATE/HR]");
+      expect(result).not.toContain("[£]");
+      expect(result).toContain("[Work], [£10.00]");
     });
   });
 
   describe("subheading", () => {
     it("is shown when there is one", () => {
       expect(invoice("[META]", "invoice_subheading=PO 123")).toContain(
-        "\\normalsize\\textbf{PO 123}"
+        "*INVOICE*] \\ *PO 123*"
       );
     });
 
     it("is left out when there is not", () => {
-      expect(invoice()).not.toContain("\\normalsize\\textbf{");
+      expect(invoice()).not.toContain("*INVOICE*] \\");
     });
   });
 });
 
-describe("quote_template.tex", () => {
+describe("quote_template.typ", () => {
   it("fills in the parties and terms", () => {
     const result = quote("[META]", "quote_terms=30 days");
-    expect(result).toContain("\\textbf{Me}");
+    expect(result).toContain("*Me*");
     expect(result).toContain("Attention: Jane Client");
-    expect(result).toContain("\\underline{Payment Terms:} 30 days");
+    expect(result).toContain("#underline[Payment Terms:] 30 days");
   });
 
   describe("with items", () => {
@@ -257,41 +261,39 @@ describe("quote_template.tex", () => {
     );
 
     it("lists each item with its subtotal", () => {
-      expect(result).toContain("1 & Build");
-      expect(result).toContain("\\pounds30.00");
-      expect(result).toContain("2 & Test");
-      expect(result).toContain("\\pounds6.00");
+      expect(result).toContain("[1], [Build], [£30.00]");
+      expect(result).toContain("[2], [Test], [£6.00]");
     });
 
     it("left aligns the text columns and right aligns the subtotal", () => {
-      expect(result).toContain("{l X r}");
+      expect(result).toContain("align: (left, left, right)");
     });
 
     it("shows a provided subtotal to two decimal places", () => {
       expect(quote("[ITEM_1]", "description=Build", "subtotal=300")).toContain(
-        "\\pounds300.00"
+        "[£300.00]"
       );
     });
 
     it("totals the items", () => {
-      expect(result).toContain("\\large{\\pounds36.00}");
+      expect(result).toContain("#total[£36.00]");
     });
 
     it("lists each item's responsibility", () => {
-      expect(result).toContain("\\item \\textbf{Build} - Everything");
-      expect(result).toContain("\\item \\textbf{Test} - All of it");
+      expect(result).toContain("- *Build* - Everything");
+      expect(result).toContain("- *Test* - All of it");
     });
   });
 
   // A group with no items has no total (that is what lets the invoice hide its
   // item table), so the quote falls back to zero itself
   it("shows a total of zero when there are no items", () => {
-    expect(quote()).toContain("\\large{\\pounds0.00}");
+    expect(quote()).toContain("#total[£0.00]");
   });
 
   it("does not show the zero fallback when there are items", () => {
     const result = quote("[ITEM_1]", "hrs=1", "rate=5");
-    expect(result).toContain("\\large{\\pounds5.00}");
+    expect(result).toContain("#total[£5.00]");
     expect(result).not.toContain("0.00");
   });
 });

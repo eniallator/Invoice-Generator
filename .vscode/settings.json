@@ -4,7 +4,5 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports": "never",
     "source.fixAll.oxc": "explicit"
-  },
-  "latex-workshop.latex.autoBuild.run": "never",
-  "r.lsp.promptToInstall": false
+  }
 }

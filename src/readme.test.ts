@@ -46,50 +46,42 @@ describe("README: Command Usage", () => {
     expect(parseCli([exampleCfg])).toEqual({
       kind: "run",
       cfg: exampleCfg,
-      template: "./invoice_template.tex",
-      outPath: "./out/johnDoe.2000.01.01.tex",
-      keepAux: false,
+      template: "./invoice_template.typ",
+      outPath: "./out/johnDoe.2000.01.01.typ",
     });
   });
 
   it("--template / -t chooses the template file", () => {
-    expect(parseCli(["-t", "./mine.tex", exampleCfg])).toMatchObject({
-      template: "./mine.tex",
+    expect(parseCli(["-t", "./mine.typ", exampleCfg])).toMatchObject({
+      template: "./mine.typ",
     });
-    expect(parseCli(["--template", "./mine.tex", exampleCfg])).toMatchObject({
-      template: "./mine.tex",
+    expect(parseCli(["--template", "./mine.typ", exampleCfg])).toMatchObject({
+      template: "./mine.typ",
     });
   });
 
   it("--out-path / -o chooses the output destination", () => {
-    expect(parseCli(["-o", "./out/mine.tex", exampleCfg])).toMatchObject({
-      outPath: "./out/mine.tex",
+    expect(parseCli(["-o", "./out/mine.typ", exampleCfg])).toMatchObject({
+      outPath: "./out/mine.typ",
     });
     expect(
-      parseCli(["--out-path", "./out/mine.tex", exampleCfg])
-    ).toMatchObject({ outPath: "./out/mine.tex" });
+      parseCli(["--out-path", "./out/mine.typ", exampleCfg])
+    ).toMatchObject({ outPath: "./out/mine.typ" });
   });
 
   it("--quote / -q switches the default template to the quote template", () => {
     expect(parseCli(["-q", exampleCfg])).toMatchObject({
-      template: "./quote_template.tex",
+      template: "./quote_template.typ",
     });
     expect(parseCli(["--quote", exampleCfg])).toMatchObject({
-      template: "./quote_template.tex",
-    });
-  });
-
-  it("--keep-aux / -k keeps the auxiliary files", () => {
-    expect(parseCli(["-k", exampleCfg])).toMatchObject({ keepAux: true });
-    expect(parseCli(["--keep-aux", exampleCfg])).toMatchObject({
-      keepAux: true,
+      template: "./quote_template.typ",
     });
   });
 
   it("explicit options override the quote defaults", () => {
     expect(
-      parseCli(["-q", "-t", "./mine.tex", "-o", "./out/mine.tex", exampleCfg])
-    ).toMatchObject({ template: "./mine.tex", outPath: "./out/mine.tex" });
+      parseCli(["-q", "-t", "./mine.typ", "-o", "./out/mine.typ", exampleCfg])
+    ).toMatchObject({ template: "./mine.typ", outPath: "./out/mine.typ" });
   });
 });
 
@@ -208,12 +200,12 @@ describe("README: Context Variables", () => {
     expect(
       render(
         lines(
-          "\\underline{INV DATE} {{ invoice_date }}",
+          "#underline[INV DATE] {{ invoice_date }}",
           "Pay to: {{ PAYMENT.account_name }}"
         ),
         cfg
       )
-    ).toBe(lines("\\underline{INV DATE} 2000/01/01", "Pay to: John Doe"));
+    ).toBe(lines("#underline[INV DATE] 2000/01/01", "Pay to: John Doe"));
   });
 
   it("replaces variables it cannot find with an empty string", () => {
@@ -229,11 +221,11 @@ describe("README: Map Directive", () => {
       lines(
         "Invoice Items:",
         "ID, hrs, rate, subtotal",
-        "{* map ./invoice_item.tex ITEM */}Total: {{ ITEM_total_due }}"
+        "{* map ./invoice_item.typ ITEM */}Total: {{ ITEM_total_due }}"
       ),
       ITEMS_CFG,
       {
-        "invoice_item.tex":
+        "invoice_item.typ":
           "{{ ITEM.id }}, {{ ITEM.hrs }}, {{ ITEM.rate }}, {{ ITEM.subtotal }}\n",
       }
     );

@@ -14,50 +14,50 @@ const paths = (overrides: Partial<Parameters<typeof resolvePaths>[0]> = {}) =>
 
 describe("resolvePaths", () => {
   it("names the output after the config file", () => {
-    expect(paths().outPath).toBe("./out/johnDoe.2000.01.01.tex");
+    expect(paths().outPath).toBe("./out/johnDoe.2000.01.01.typ");
   });
 
   it("strips only the last extension and any directories", () => {
     expect(paths({ cfg: join("a", "b", "c.d.cfg") }).outPath).toBe(
-      "./out/c.d.tex"
+      "./out/c.d.typ"
     );
-    expect(paths({ cfg: "single.cfg" }).outPath).toBe("./out/single.tex");
+    expect(paths({ cfg: "single.cfg" }).outPath).toBe("./out/single.typ");
   });
 
   it("uses an empty name for configs without an extension", () => {
-    expect(paths({ cfg: "noextension" }).outPath).toBe("./out/.tex");
+    expect(paths({ cfg: "noextension" }).outPath).toBe("./out/.typ");
   });
 
   it("defaults to the invoice template", () => {
-    expect(paths().template).toBe("./invoice_template.tex");
+    expect(paths().template).toBe("./invoice_template.typ");
   });
 
   it("defaults to the quote template in quote mode", () => {
-    expect(paths({ quote: true }).template).toBe("./quote_template.tex");
+    expect(paths({ quote: true }).template).toBe("./quote_template.typ");
   });
 
   it("does not change SAME out paths in quote mode", () => {
-    expect(paths({ quote: true }).outPath).toBe("./out/johnDoe.2000.01.01.tex");
+    expect(paths({ quote: true }).outPath).toBe("./out/johnDoe.2000.01.01.typ");
   });
 
   it("lets an explicit template override quote mode", () => {
-    expect(paths({ quote: true, template: "./mine.tex" }).template).toBe(
-      "./mine.tex"
+    expect(paths({ quote: true, template: "./mine.typ" }).template).toBe(
+      "./mine.typ"
     );
   });
 
   it("uses an explicit out path as given", () => {
-    expect(paths({ outPath: "build/final.tex" }).outPath).toBe(
-      "build/final.tex"
+    expect(paths({ outPath: "build/final.typ" }).outPath).toBe(
+      "build/final.typ"
     );
-    expect(paths({ outPath: "build/final.tex", quote: true }).outPath).toBe(
-      "build/final.tex"
+    expect(paths({ outPath: "build/final.typ", quote: true }).outPath).toBe(
+      "build/final.typ"
     );
   });
 
   it("falls back to the default file names for an empty out path", () => {
-    expect(paths({ outPath: "" }).outPath).toBe("./out/invoice.tex");
-    expect(paths({ outPath: "", quote: true }).outPath).toBe("./out/quote.tex");
+    expect(paths({ outPath: "" }).outPath).toBe("./out/invoice.typ");
+    expect(paths({ outPath: "", quote: true }).outPath).toBe("./out/quote.typ");
   });
 });
 
@@ -66,40 +66,28 @@ describe("parseCli", () => {
     expect(parseCli(["cfg/x.cfg"])).toEqual({
       kind: "run",
       cfg: "cfg/x.cfg",
-      template: "./invoice_template.tex",
-      outPath: "./out/x.tex",
-      keepAux: false,
+      template: "./invoice_template.typ",
+      outPath: "./out/x.typ",
     });
   });
 
   it("supports the short options", () => {
-    expect(
-      parseCli(["-q", "-k", "-t", "t.tex", "-o", "o.tex", "x.cfg"])
-    ).toEqual({
+    expect(parseCli(["-q", "-t", "t.typ", "-o", "o.typ", "x.cfg"])).toEqual({
       kind: "run",
       cfg: "x.cfg",
-      template: "t.tex",
-      outPath: "o.tex",
-      keepAux: true,
+      template: "t.typ",
+      outPath: "o.typ",
     });
   });
 
   it("supports the long options", () => {
     expect(
-      parseCli([
-        "--quote",
-        "--keep-aux",
-        "--template=t.tex",
-        "--out-path",
-        "o.tex",
-        "x.cfg",
-      ])
+      parseCli(["--quote", "--template=t.typ", "--out-path", "o.typ", "x.cfg"])
     ).toEqual({
       kind: "run",
       cfg: "x.cfg",
-      template: "t.tex",
-      outPath: "o.tex",
-      keepAux: true,
+      template: "t.typ",
+      outPath: "o.typ",
     });
   });
 
@@ -107,20 +95,14 @@ describe("parseCli", () => {
     expect(parseCli(["x.cfg", "-q"])).toEqual({
       kind: "run",
       cfg: "x.cfg",
-      template: "./quote_template.tex",
-      outPath: "./out/x.tex",
-      keepAux: false,
+      template: "./quote_template.typ",
+      outPath: "./out/x.typ",
     });
-  });
-
-  it("only keeps the auxiliary files when asked to", () => {
-    expect(parseCli(["x.cfg"])).toMatchObject({ keepAux: false });
-    expect(parseCli(["x.cfg", "-k"])).toMatchObject({ keepAux: true });
   });
 
   it("supports SAME as an explicit out path", () => {
     expect(parseCli(["-o", "SAME", "x.cfg"])).toMatchObject({
-      outPath: "./out/x.tex",
+      outPath: "./out/x.typ",
     });
   });
 

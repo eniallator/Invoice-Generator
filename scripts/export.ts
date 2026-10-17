@@ -7,6 +7,7 @@ import { isNonNullable } from "deep-guards";
 import { resolvePaths } from "../src/cli.ts";
 import { loadEnv, requireEnv } from "../src/env.ts";
 import { exportInvoice, isExportMode } from "../src/export-invoice.ts";
+import { pdfPathFor } from "../src/typst.ts";
 
 const USAGE = `Usage: pnpm export <cfg>... [options]
 
@@ -58,7 +59,7 @@ for (const cfg of positionals) {
   const exported = exportInvoice({
     cfg,
     template,
-    pdfPath: outPath.replace(/\.tex$/, ".pdf"),
+    pdfPath: pdfPathFor(outPath),
     pdfDir,
     cfgDir,
     overwrite: values.overwrite,
